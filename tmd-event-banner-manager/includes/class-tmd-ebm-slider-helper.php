@@ -388,18 +388,17 @@ class TMD_EBM_Slider_Helper {
                 'target' => '_self',
                 'flw' => 'follow',
                 'ltype' => 'a',
-                'link' => str_replace('/', '\\/', $event['button_link']),
+                'link' => $event['button_link'],
                 'src' => [1],
             ]];
         }
 
         // Set thumb/bg image in params
         if (!empty($event['background_image_url'])) {
-            $img_url = str_replace('/', '\\/', $event['background_image_url']);
             $params['thumb'] = $params['thumb'] ?? [];
             $params['thumb']['default'] = [
                 'image' => [
-                    'src' => $img_url,
+                    'src' => $event['background_image_url'],
                     'repeat' => '',
                     'size' => 'cover',
                     'pos' => ['x' => '50%', 'y' => '50%'],
