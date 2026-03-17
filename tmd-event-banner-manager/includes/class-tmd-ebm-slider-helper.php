@@ -372,8 +372,14 @@ class TMD_EBM_Slider_Helper {
     /**
      * Build slide params for the event slide.
      */
-    private static function build_event_params(array $template_params, array $event): array {
+    private static function build_event_params(array $template_params, array $event, int $slide_id = 0): array {
         $params = $template_params;
+
+        // Set slide identity - RS requires integer id matching DB row
+        if ($slide_id > 0) {
+            $params['id'] = $slide_id;
+        }
+        $params['title'] = $event['event_name'] ?? $event['headline'] ?? 'Event Banner';
 
         // Mark this as an event slide
         $params['tmd_event_slug'] = $event['event_slug'];
@@ -466,16 +472,18 @@ class TMD_EBM_Slider_Helper {
         $template_layers = json_decode($template['layers'], true) ?: [];
         $template_params = json_decode($template['params'], true) ?: [];
 
-        // 3. Build event layers and params
+        // 3. Build event layers
         $event_layers = self::build_event_layers($template_layers, $event);
-        $event_params = self::build_event_params($template_params, $event);
 
         // RS stores layers as a JSON object with string keys, not an array.
         // Use json_encode with JSON_UNESCAPED_SLASHES to match RS format.
         $layers_json = json_encode((object) $event_layers, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $params_json = wp_json_encode($event_params);
 
         if ($existing_slide) {
+            // Build params with correct slide ID
+            $event_params = self::build_event_params($template_params, $event, (int) $existing_slide['id']);
+            $params_json = wp_json_encode($event_params);
+
             // Update existing event slide
             $wpdb->update(
                 $slides_table,
@@ -489,22 +497,6 @@ class TMD_EBM_Slider_Helper {
                 ['%d']
             );
 
-            // Also update v6 table if both exist
-            $v6_table = $wpdb->prefix . 'revslider_slides';
-            if ($wpdb->get_var("SHOW TABLES LIKE '{$v6_table}'")) {
-                $v6_slide = $wpdb->get_row($wpdb->prepare(
-                    "SELECT id FROM {$v6_table} WHERE slider_id = %d AND id = %d",
-                    $slider_id, $existing_slide['id']
-                ));
-                if ($v6_slide) {
-                    $wpdb->update(
-                        $v6_table,
-                        ['layers' => $layers_json, 'params' => $params_json, 'slide_order' => 0],
-                        ['id' => $existing_slide['id']]
-                    );
-                }
-            }
-
             // Clear RS cache
             self::clear_rs_cache($slider_id);
 
@@ -515,7 +507,9 @@ class TMD_EBM_Slider_Helper {
                 'payload' => $payload,
             ];
         } else {
-            // Create new event slide
+            // Build params initially without slide ID (will update after insert)
+            $event_params = self::build_event_params($template_params, $event, 0);
+            $params_json = wp_json_encode($event_params);
             $settings_json = $template['settings'] ?? '{"version":"7.0.0"}';
 
             $wpdb->insert(
@@ -540,22 +534,16 @@ class TMD_EBM_Slider_Helper {
                 ];
             }
 
-            // Also insert into v6 table for compatibility
-            $v6_table = $wpdb->prefix . 'revslider_slides';
-            if ($slides_table !== $v6_table && $wpdb->get_var("SHOW TABLES LIKE '{$v6_table}'")) {
-                $wpdb->insert(
-                    $v6_table,
-                    [
-                        'id' => $new_slide_id,
-                        'slider_id' => $slider_id,
-                        'slide_order' => 0,
-                        'params' => $params_json,
-                        'layers' => $layers_json,
-                        'settings' => $settings_json,
-                    ],
-                    ['%d', '%d', '%d', '%s', '%s', '%s']
-                );
-            }
+            // Update params with the correct slide ID (RS requires id in params to match DB id)
+            $event_params['id'] = $new_slide_id;
+            $params_json = wp_json_encode($event_params);
+            $wpdb->update(
+                $slides_table,
+                ['params' => $params_json],
+                ['id' => $new_slide_id],
+                ['%s'],
+                ['%d']
+            );
 
             // Clear RS cache
             self::clear_rs_cache($slider_id);
