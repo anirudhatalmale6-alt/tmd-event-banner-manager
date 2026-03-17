@@ -111,8 +111,8 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
     <!-- BANNER SLIDES OVERVIEW -->
     <?php if (!empty($banner_slides)): ?>
     <div class="tmd-ebm-panel" style="margin-top:24px;">
-        <h2>Banner Slides Overview</h2>
-        <p class="description">All slides currently in the Banner slider. Event slides are managed here; manual slides can be edited in Slider Revolution.</p>
+        <h2>Homepage Slider Overview</h2>
+        <p class="description">All slides in the homepage slider (<?php echo esc_html($target_alias); ?>). Event slides are managed here; manual slides can be edited in Slider Revolution.</p>
         <table class="widefat striped tmd-ebm-events-table">
             <thead>
                 <tr>

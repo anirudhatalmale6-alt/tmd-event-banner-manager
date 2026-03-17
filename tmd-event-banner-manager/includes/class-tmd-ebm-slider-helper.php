@@ -15,10 +15,17 @@ class TMD_EBM_Slider_Helper {
     }
 
     /**
-     * Get the master slider alias (default: 'banner').
+     * Get the master slider alias (default: 'slider-1-1').
      */
     private static function get_master_alias(): string {
-        return get_option(self::MASTER_ALIAS_OPTION, 'banner');
+        return get_option(self::MASTER_ALIAS_OPTION, 'slider-1-1');
+    }
+
+    /**
+     * Public accessor for the target slider alias (used by admin).
+     */
+    public static function get_target_alias(): string {
+        return self::get_master_alias();
     }
 
     /**

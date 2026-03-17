@@ -42,14 +42,15 @@ class TMD_EBM_Admin {
         }
         $active_slug = get_option('tmd_current_event_slug', '');
 
-        // Fetch all slides from the Banner slider for the overview panel
+        // Fetch all slides from the target slider for the overview panel
         $banner_slides = [];
+        $target_alias = TMD_EBM_Slider_Helper::get_target_alias();
         // Try v7 table first (RS 7.x), fall back to v6
         $sliders_table = $wpdb->prefix . 'revslider_sliders7';
         if (!$wpdb->get_var("SHOW TABLES LIKE '{$sliders_table}'")) {
             $sliders_table = $wpdb->prefix . 'revslider_sliders';
         }
-        $slider_id = $wpdb->get_var("SELECT id FROM {$sliders_table} WHERE alias = 'banner' LIMIT 1");
+        $slider_id = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$sliders_table} WHERE alias = %s LIMIT 1", $target_alias));
         if ($slider_id) {
             $slides_table = $wpdb->prefix . 'revslider_slides7';
             if (!$wpdb->get_var("SHOW TABLES LIKE '{$slides_table}'")) {
