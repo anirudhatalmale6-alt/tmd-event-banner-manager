@@ -59,13 +59,14 @@ class TMD_EBM_Slider_Helper {
     }
 
     /**
-     * Get template slide ID: first non-event, non-global slide with layers.
+     * Get template slide ID: newest non-event, non-global slide with layers.
+     * Prefers newer slides (higher ID) to match the latest design style.
      */
     private static function get_template_slide_id(int $slider_id): int {
         global $wpdb;
         $table = $wpdb->prefix . 'revslider_slides7';
         $slides = $wpdb->get_results($wpdb->prepare(
-            "SELECT id, params, layers FROM {$table} WHERE slider_id = %d AND static = 0 ORDER BY slide_order ASC",
+            "SELECT id, params, layers FROM {$table} WHERE slider_id = %d AND (static = '' OR static IS NULL) ORDER BY id DESC",
             $slider_id
         ), ARRAY_A);
 
@@ -119,13 +120,14 @@ class TMD_EBM_Slider_Helper {
     private static function build_event_layers(array $template_layers, array $event): array {
         $layers = $template_layers;
 
-        $text_layers = [];
+        // Classify layers by their role in the template
+        // Template structure (from slides 84-87): eyebrow, headline, subheadline, discount, button, trust, slidebg
         $bg_layer_key = null;
         $button_layer_key = null;
+        $text_layer_keys = []; // All non-button, non-bg text layers in original order
 
         foreach ($layers as $key => $layer) {
             $type = $layer['type'] ?? ($layer['subtype'] ?? '');
-            $alias = strtolower($layer['alias'] ?? '');
             $text = $layer['content']['text'] ?? '';
 
             // Background layer
@@ -135,44 +137,78 @@ class TMD_EBM_Slider_Helper {
                 continue;
             }
 
-            // Button
+            // Button (has link action or contains SHOP)
             if ($type === 'text' && (
                 (!empty($layer['subtype']) && $layer['subtype'] === 'button') ||
-                stripos($alias, 'button') !== false ||
-                stripos($text, 'Shop Now') !== false ||
-                stripos($text, 'shop now') !== false
+                !empty($layer['actions']) ||
+                stripos($text, 'SHOP') !== false
             )) {
                 $button_layer_key = $key;
                 continue;
             }
 
-            // Text layers
+            // Regular text layer
             if ($type === 'text') {
-                $font_size = 0;
-                if (!empty($layer['font']['size'][0])) {
-                    $font_size = intval($layer['font']['size'][0]);
-                }
-                $text_layers[$key] = [
-                    'font_size' => $font_size,
-                    'layer' => $layer,
-                ];
+                $text_layer_keys[] = $key;
             }
         }
 
-        // Sort by font size descending: biggest = headline, second = subheadline
-        uasort($text_layers, function($a, $b) {
-            return $b['font_size'] - $a['font_size'];
-        });
+        // Map text layers by position order (as they appear in template):
+        // Template order: [0]=eyebrow, [1]=headline, [2]=subheadline, [3]=discount, [4]=trust
+        // We identify headline as the layer with the largest font size
+        $headline_key = null;
+        $max_size = 0;
+        foreach ($text_layer_keys as $key) {
+            $size = intval($layers[$key]['font']['size'][0] ?? 0);
+            if ($size > $max_size) {
+                $max_size = $size;
+                $headline_key = $key;
+            }
+        }
 
-        $text_keys = array_keys($text_layers);
-        $headline_key = $text_keys[0] ?? null;
-        $subheadline_key = $text_keys[1] ?? null;
-        $extra_text_key = $text_keys[2] ?? null;
+        // Split remaining text layers into before-headline and after-headline groups
+        $before_headline = [];
+        $after_headline = [];
+        $found_headline = false;
+        foreach ($text_layer_keys as $key) {
+            if ($key === $headline_key) {
+                $found_headline = true;
+                continue;
+            }
+            if (!$found_headline) {
+                $before_headline[] = $key;
+            } else {
+                $after_headline[] = $key;
+            }
+        }
 
-        // 1. Headline
-        if ($headline_key !== null && !empty($event['headline'])) {
-            $layers[$headline_key]['content']['text'] = $event['headline'];
+        // Map: before headline = eyebrow(s), after headline = subheadline, discount, trust
+        $eyebrow_key = $before_headline[0] ?? null;
+        $subheadline_key = $after_headline[0] ?? null;
+        $discount_key = $after_headline[1] ?? null;
+        $trust_key = $after_headline[2] ?? null;
 
+        // 1. Eyebrow - replace or clear
+        if ($eyebrow_key !== null) {
+            $layers[$eyebrow_key]['content']['text'] = $event['eyebrow_text'] ?? '';
+            if (!empty($event['eyebrow_color'])) {
+                $color = $event['eyebrow_color'];
+                $layers[$eyebrow_key]['color'] = [$color, $color, $color, $color, $color];
+            }
+            if (!empty($event['eyebrow_font_family'])) {
+                $layers[$eyebrow_key]['font']['family'] = $event['eyebrow_font_family'];
+            }
+            if (!empty($event['eyebrow_font_size_desktop'])) {
+                $d = $event['eyebrow_font_size_desktop'] . 'px';
+                $t = ($event['eyebrow_font_size_tablet'] ?? $event['eyebrow_font_size_desktop']) . 'px';
+                $m = ($event['eyebrow_font_size_mobile'] ?? 12) . 'px';
+                $layers[$eyebrow_key]['font']['size'] = [$d, $d, $t, $t, $m];
+            }
+        }
+
+        // 2. Headline - replace or clear
+        if ($headline_key !== null) {
+            $layers[$headline_key]['content']['text'] = $event['headline'] ?? '';
             if (!empty($event['headline_font_family'])) {
                 $layers[$headline_key]['font']['family'] = $event['headline_font_family'];
             }
@@ -192,10 +228,9 @@ class TMD_EBM_Slider_Helper {
             }
         }
 
-        // 2. Subheadline
-        if ($subheadline_key !== null && !empty($event['subheadline'])) {
-            $layers[$subheadline_key]['content']['text'] = $event['subheadline'];
-
+        // 3. Subheadline - replace or clear
+        if ($subheadline_key !== null) {
+            $layers[$subheadline_key]['content']['text'] = $event['subheadline'] ?? '';
             if (!empty($event['subheadline_font_family'])) {
                 $layers[$subheadline_key]['font']['family'] = $event['subheadline_font_family'];
             }
@@ -215,37 +250,33 @@ class TMD_EBM_Slider_Helper {
             }
         }
 
-        // 3. Extra text layer (eyebrow or discount)
-        if ($extra_text_key !== null) {
-            if (!empty($event['eyebrow_text'])) {
-                $layers[$extra_text_key]['content']['text'] = $event['eyebrow_text'];
-                if (!empty($event['eyebrow_color'])) {
-                    $color = $event['eyebrow_color'];
-                    $layers[$extra_text_key]['color'] = [$color, $color, $color, $color, $color];
-                }
-                if (!empty($event['eyebrow_font_family'])) {
-                    $layers[$extra_text_key]['font']['family'] = $event['eyebrow_font_family'];
-                }
-                if (!empty($event['eyebrow_font_size_desktop'])) {
-                    $d = $event['eyebrow_font_size_desktop'] . 'px';
-                    $t = ($event['eyebrow_font_size_tablet'] ?? $event['eyebrow_font_size_desktop']) . 'px';
-                    $m = ($event['eyebrow_font_size_mobile'] ?? 12) . 'px';
-                    $layers[$extra_text_key]['font']['size'] = [$d, $d, $t, $t, $m];
-                }
-            } elseif (!empty($event['discount_text'])) {
-                $layers[$extra_text_key]['content']['text'] = $event['discount_text'];
-                if (!empty($event['discount_text_color'])) {
-                    $color = $event['discount_text_color'];
-                    $layers[$extra_text_key]['color'] = [$color, $color, $color, $color, $color];
-                }
+        // 4. Discount - replace or clear
+        if ($discount_key !== null) {
+            $layers[$discount_key]['content']['text'] = $event['discount_text'] ?? '';
+            if (!empty($event['discount_text_color'])) {
+                $color = $event['discount_text_color'];
+                $layers[$discount_key]['color'] = [$color, $color, $color, $color, $color];
+            }
+            if (!empty($event['discount_font_family'])) {
+                $layers[$discount_key]['font']['family'] = $event['discount_font_family'];
             }
         }
 
-        // 4. Button
-        if ($button_layer_key !== null) {
-            if (!empty($event['button_text'])) {
-                $layers[$button_layer_key]['content']['text'] = $event['button_text'];
+        // 5. Trust line - replace or clear
+        if ($trust_key !== null) {
+            $layers[$trust_key]['content']['text'] = $event['trust_text'] ?? '';
+            if (!empty($event['trust_color'])) {
+                $color = $event['trust_color'];
+                $layers[$trust_key]['color'] = [$color, $color, $color, $color, $color];
             }
+            if (!empty($event['trust_font_family'])) {
+                $layers[$trust_key]['font']['family'] = $event['trust_font_family'];
+            }
+        }
+
+        // 6. Button - replace or clear
+        if ($button_layer_key !== null) {
+            $layers[$button_layer_key]['content']['text'] = $event['button_text'] ?? 'SHOP NOW';
             if (!empty($event['button_text_color'])) {
                 $color = $event['button_text_color'];
                 $layers[$button_layer_key]['color'] = [$color, $color, $color, $color, $color];
