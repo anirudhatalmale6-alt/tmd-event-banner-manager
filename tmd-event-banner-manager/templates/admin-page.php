@@ -15,6 +15,12 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
     <?php if (!empty($_GET['deleted'])): ?>
         <div class="notice notice-warning is-dismissible"><p>Event deleted.</p></div>
     <?php endif; ?>
+    <?php if (!empty($_GET['published'])): ?>
+        <div class="notice notice-success is-dismissible"><p>Event published and banner slide created.</p></div>
+    <?php endif; ?>
+    <?php if (!empty($_GET['unpublished'])): ?>
+        <div class="notice notice-info is-dismissible"><p>Event unpublished and banner slide removed.</p></div>
+    <?php endif; ?>
 
     <!-- EVENT LIST -->
     <div class="tmd-ebm-panel">
@@ -60,6 +66,23 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                             <td><?php echo $status; ?></td>
                             <td>
                                 <a href="<?php echo esc_url(admin_url('admin.php?page=tmd-ebm&edit=' . $evt['id'])); ?>" class="button button-small">Edit</a>
+                                <?php if (!empty($evt['is_active'])): ?>
+                                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline;">
+                                    <?php wp_nonce_field('tmd_ebm_toggle_publish'); ?>
+                                    <input type="hidden" name="action" value="tmd_ebm_toggle_publish">
+                                    <input type="hidden" name="event_id" value="<?php echo (int)$evt['id']; ?>">
+                                    <input type="hidden" name="new_state" value="0">
+                                    <button class="button button-small" style="color:#d63638;">Unpublish</button>
+                                </form>
+                                <?php else: ?>
+                                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline;">
+                                    <?php wp_nonce_field('tmd_ebm_toggle_publish'); ?>
+                                    <input type="hidden" name="action" value="tmd_ebm_toggle_publish">
+                                    <input type="hidden" name="event_id" value="<?php echo (int)$evt['id']; ?>">
+                                    <input type="hidden" name="new_state" value="1">
+                                    <button class="button button-small" style="color:#00a32a;">Publish</button>
+                                </form>
+                                <?php endif; ?>
                                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline;" onsubmit="return confirm('Delete this event?');">
                                     <?php wp_nonce_field('tmd_ebm_delete_event'); ?>
                                     <input type="hidden" name="action" value="tmd_ebm_delete_event">
@@ -245,8 +268,15 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                         <td><input type="datetime-local" name="countdown_date" value="<?php echo $v('countdown_date'); ?>"></td>
                     </tr>
                     <tr>
-                        <th>Active</th>
-                        <td><label><input type="checkbox" name="is_active" <?php checked(!empty($e['is_active']) || !$is_edit); ?>> Enabled</label></td>
+                        <th>Status</th>
+                        <td>
+                            <?php if ($is_edit): ?>
+                                <label><input type="checkbox" name="is_active" <?php checked(!empty($e['is_active'])); ?>> Published (live on site)</label>
+                            <?php else: ?>
+                                <span style="color:#888;">Status will be set by Publish or Save as Draft button below</span>
+                                <input type="hidden" name="is_active" id="is_active_hidden" value="1">
+                            <?php endif; ?>
+                        </td>
                     </tr>
                 </table>
             </div>
@@ -656,9 +686,12 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
             </div>
 
             <p class="tmd-ebm-submit">
-                <button class="button button-primary button-large"><?php echo $is_edit ? 'Update Event' : 'Create Event'; ?></button>
                 <?php if ($is_edit): ?>
+                    <button class="button button-primary button-large">Update Event</button>
                     <a href="<?php echo esc_url(admin_url('admin.php?page=tmd-ebm')); ?>" class="button button-large" style="margin-left:8px;">Cancel</a>
+                <?php else: ?>
+                    <button name="save_as" value="publish" class="button button-primary button-large">Publish Event</button>
+                    <button name="save_as" value="draft" class="button button-large" style="margin-left:8px;">Save as Draft</button>
                 <?php endif; ?>
             </p>
         </form>

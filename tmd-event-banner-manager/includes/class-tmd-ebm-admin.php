@@ -8,6 +8,7 @@ class TMD_EBM_Admin {
         add_action('admin_post_tmd_ebm_save_event', [$this, 'save_event']);
         add_action('admin_post_tmd_ebm_run_update', [$this, 'run_update']);
         add_action('admin_post_tmd_ebm_delete_event', [$this, 'delete_event']);
+        add_action('admin_post_tmd_ebm_toggle_publish', [$this, 'toggle_publish']);
     }
 
     public function menu() {
@@ -221,10 +222,20 @@ class TMD_EBM_Admin {
             'text_position' => sanitize_text_field($_POST['text_position'] ?? 'left'),
             'text_position_tablet' => sanitize_text_field($_POST['text_position_tablet'] ?? 'left'),
             'text_position_mobile' => sanitize_text_field($_POST['text_position_mobile'] ?? 'left'),
-            'is_active' => !empty($_POST['is_active']) ? 1 : 0,
         ];
 
+        // Handle is_active based on context:
+        // - Edit mode: checkbox controls it directly
+        // - Create mode: "Publish Event" button sets active=1, "Save as Draft" sets active=0
         $event_id = intval($_POST['event_id'] ?? 0);
+        if ($event_id > 0) {
+            // Edit mode - use checkbox value
+            $data['is_active'] = !empty($_POST['is_active']) ? 1 : 0;
+        } else {
+            // Create mode - use button value
+            $save_as = sanitize_text_field($_POST['save_as'] ?? 'publish');
+            $data['is_active'] = ($save_as === 'publish') ? 1 : 0;
+        }
 
         if ($event_id > 0) {
             $wpdb->update($table, $data, ['id' => $event_id]);
@@ -269,6 +280,46 @@ class TMD_EBM_Admin {
         }
 
         wp_safe_redirect(admin_url('admin.php?page=tmd-ebm&updated=1'));
+        exit;
+    }
+
+    public function toggle_publish() {
+        if (!current_user_can('manage_options')) wp_die('Unauthorized');
+        check_admin_referer('tmd_ebm_toggle_publish');
+
+        global $wpdb;
+        $table = TMD_EBM_TABLE;
+        $event_id = intval($_POST['event_id'] ?? 0);
+        $new_state = intval($_POST['new_state'] ?? 0);
+
+        if ($event_id > 0) {
+            $wpdb->update($table, ['is_active' => $new_state], ['id' => $event_id], ['%d'], ['%d']);
+
+            $event = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $event_id), ARRAY_A);
+            if ($event) {
+                if ($new_state) {
+                    // Publishing - create/update slider slide
+                    update_option('tmd_current_event_slug', $event['event_slug']);
+                    TMD_EBM_Slider_Helper::update_master_slider($event);
+                } else {
+                    // Unpublishing - remove slider slide
+                    TMD_EBM_Slider_Helper::remove_event_slide($event['event_slug']);
+                    $current = get_option('tmd_current_event_slug', '');
+                    if ($current === $event['event_slug']) {
+                        $next = TMD_EBM_Event_Resolver::get_active_event();
+                        if ($next) {
+                            update_option('tmd_current_event_slug', $next['event_slug']);
+                            TMD_EBM_Slider_Helper::update_master_slider($next);
+                        } else {
+                            update_option('tmd_current_event_slug', 'default');
+                        }
+                    }
+                }
+            }
+        }
+
+        $action = $new_state ? 'published' : 'unpublished';
+        wp_safe_redirect(admin_url('admin.php?page=tmd-ebm&' . $action . '=1'));
         exit;
     }
 }
