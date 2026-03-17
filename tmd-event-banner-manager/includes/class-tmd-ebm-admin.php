@@ -40,6 +40,49 @@ class TMD_EBM_Admin {
             $edit_event = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $edit_id), ARRAY_A);
         }
         $active_slug = get_option('tmd_current_event_slug', '');
+
+        // Fetch all slides from the Banner slider for the overview panel
+        $banner_slides = [];
+        $slider_id = $wpdb->get_var("SELECT id FROM {$wpdb->prefix}revslider_sliders WHERE alias = 'banner' LIMIT 1");
+        if ($slider_id) {
+            $slides_table = $wpdb->prefix . 'revslider_slides7';
+            if (!$wpdb->get_var("SHOW TABLES LIKE '{$slides_table}'")) {
+                $slides_table = $wpdb->prefix . 'revslider_slides';
+            }
+            $raw_slides = $wpdb->get_results($wpdb->prepare(
+                "SELECT id, slide_order, params, layers FROM {$slides_table} WHERE slider_id = %d ORDER BY slide_order ASC",
+                $slider_id
+            ), ARRAY_A);
+            foreach ($raw_slides as $rs) {
+                $p = json_decode($rs['params'], true) ?: [];
+                $l = json_decode($rs['layers'], true) ?: [];
+                $event_slug = $p['tmd_event_slug'] ?? '';
+                $title = $p['title'] ?? 'Untitled';
+                $is_global = !empty($p['global']);
+                // Try to get background image from layers
+                $bg_url = '';
+                foreach ($l as $layer) {
+                    if (isset($layer['subtype']) && $layer['subtype'] === 'slidebg') {
+                        $bg_url = $layer['bg']['image']['src'] ?? '';
+                        break;
+                    }
+                }
+                // Also check params thumb
+                if (!$bg_url && !empty($p['thumb']['default']['image']['src'])) {
+                    $bg_url = str_replace('\\/', '/', $p['thumb']['default']['image']['src']);
+                }
+                $banner_slides[] = [
+                    'id' => (int)$rs['id'],
+                    'order' => (int)$rs['slide_order'],
+                    'title' => $title,
+                    'event_slug' => $event_slug,
+                    'is_global' => $is_global,
+                    'bg_url' => $bg_url,
+                    'layer_count' => count($l),
+                ];
+            }
+        }
+
         include TMD_EBM_PATH . 'templates/admin-page.php';
     }
 

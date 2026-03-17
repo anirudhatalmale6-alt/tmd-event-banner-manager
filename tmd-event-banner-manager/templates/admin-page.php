@@ -85,6 +85,52 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
         </div>
     </div>
 
+    <!-- BANNER SLIDES OVERVIEW -->
+    <?php if (!empty($banner_slides)): ?>
+    <div class="tmd-ebm-panel" style="margin-top:24px;">
+        <h2>Banner Slides Overview</h2>
+        <p class="description">All slides currently in the Banner slider. Event slides are managed here; manual slides can be edited in Slider Revolution.</p>
+        <table class="widefat striped tmd-ebm-events-table">
+            <thead>
+                <tr>
+                    <th style="width:50px;">ID</th>
+                    <th style="width:40px;">Order</th>
+                    <th>Title</th>
+                    <th style="width:120px;">Type</th>
+                    <th style="width:50px;">Layers</th>
+                    <th style="width:180px;">Preview</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($banner_slides as $bs): ?>
+                    <tr>
+                        <td><?php echo $bs['id']; ?></td>
+                        <td><?php echo $bs['order']; ?></td>
+                        <td><?php echo esc_html($bs['title']); ?></td>
+                        <td>
+                            <?php if ($bs['is_global']): ?>
+                                <span style="color:#999;">Global Layers</span>
+                            <?php elseif ($bs['event_slug']): ?>
+                                <span style="color:#0a0;font-weight:bold;">Event: <?php echo esc_html($bs['event_slug']); ?></span>
+                            <?php else: ?>
+                                <span style="color:#06c;">Manual</span>
+                            <?php endif; ?>
+                        </td>
+                        <td style="text-align:center;"><?php echo $bs['layer_count']; ?></td>
+                        <td>
+                            <?php if ($bs['bg_url']): ?>
+                                <img src="<?php echo esc_url($bs['bg_url']); ?>" style="max-width:160px;height:auto;border:1px solid #ddd;border-radius:3px;">
+                            <?php else: ?>
+                                <span style="color:#999;">No preview</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif; ?>
+
     <!-- EVENT FORM -->
     <div class="tmd-ebm-panel" style="margin-top:24px;">
         <h2><?php echo $is_edit ? 'Edit Event #' . (int)$e['id'] : 'Create New Event'; ?></h2>
