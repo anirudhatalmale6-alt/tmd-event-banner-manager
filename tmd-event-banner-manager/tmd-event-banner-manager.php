@@ -37,3 +37,8 @@ add_action('plugins_loaded', function () {
     new TMD_EBM_Cron();
     new TMD_EBM_Product_Sync();
 });
+
+// Hide Rev Slider image_lists elements that can show as broken icons
+add_action('wp_head', function () {
+    echo '<style>image_lists,image_lists img{display:none!important;visibility:hidden!important;width:0!important;height:0!important;position:absolute!important;overflow:hidden!important}</style>' . "\n";
+}, 1);
