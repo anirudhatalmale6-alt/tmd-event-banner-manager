@@ -43,7 +43,12 @@ class TMD_EBM_Admin {
 
         // Fetch all slides from the Banner slider for the overview panel
         $banner_slides = [];
-        $slider_id = $wpdb->get_var("SELECT id FROM {$wpdb->prefix}revslider_sliders WHERE alias = 'banner' LIMIT 1");
+        // Try v7 table first (RS 7.x), fall back to v6
+        $sliders_table = $wpdb->prefix . 'revslider_sliders7';
+        if (!$wpdb->get_var("SHOW TABLES LIKE '{$sliders_table}'")) {
+            $sliders_table = $wpdb->prefix . 'revslider_sliders';
+        }
+        $slider_id = $wpdb->get_var("SELECT id FROM {$sliders_table} WHERE alias = 'banner' LIMIT 1");
         if ($slider_id) {
             $slides_table = $wpdb->prefix . 'revslider_slides7';
             if (!$wpdb->get_var("SHOW TABLES LIKE '{$slides_table}'")) {
@@ -249,7 +254,7 @@ class TMD_EBM_Admin {
             }
         }
 
-        wp_safe_redirect(admin_url('admin.php?page=tmd-ebm&saved=1'));
+        wp_safe_redirect(admin_url('admin.php?page=tmd-ebm&edit=' . $event_id . '&saved=1'));
         exit;
     }
 
