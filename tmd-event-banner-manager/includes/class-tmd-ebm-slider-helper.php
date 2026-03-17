@@ -477,7 +477,7 @@ class TMD_EBM_Slider_Helper {
             }
 
             $event_params = self::build_event_params($template_params, $event, (int) $new_id);
-            $event_params['order'] = '0'; // Place at beginning
+            $event_params['order'] = '1'; // Place at beginning with other slides
 
             $data = [
                 'version' => '7.0.0',
@@ -550,6 +550,16 @@ class TMD_EBM_Slider_Helper {
 
         // Flush object cache for SiteGround Redis
         wp_cache_flush();
+
+        // Purge SiteGround page cache
+        if (function_exists('sg_cachepress_purge_everything')) {
+            sg_cachepress_purge_everything();
+        }
+
+        // Purge WP Rocket page cache
+        if (function_exists('rocket_clean_domain')) {
+            rocket_clean_domain();
+        }
     }
 
     /**
