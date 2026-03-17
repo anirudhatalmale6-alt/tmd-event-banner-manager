@@ -225,18 +225,12 @@ class TMD_EBM_Admin {
             'text_position_mobile' => sanitize_text_field($_POST['text_position_mobile'] ?? 'left'),
         ];
 
-        // Handle is_active based on context:
-        // - Edit mode: checkbox controls it directly
-        // - Create mode: "Publish Event" button sets active=1, "Save as Draft" sets active=0
+        // Handle is_active based on which button was clicked:
+        // "Publish Event" / "Update Event" = save_as=publish = active
+        // "Save as Draft" / "Unpublish" = save_as=draft = inactive
         $event_id = intval($_POST['event_id'] ?? 0);
-        if ($event_id > 0) {
-            // Edit mode - use checkbox value
-            $data['is_active'] = !empty($_POST['is_active']) ? 1 : 0;
-        } else {
-            // Create mode - use button value
-            $save_as = sanitize_text_field($_POST['save_as'] ?? 'publish');
-            $data['is_active'] = ($save_as === 'publish') ? 1 : 0;
-        }
+        $save_as = sanitize_text_field($_POST['save_as'] ?? 'publish');
+        $data['is_active'] = ($save_as === 'publish') ? 1 : 0;
 
         if ($event_id > 0) {
             $wpdb->update($table, $data, ['id' => $event_id]);

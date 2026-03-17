@@ -271,10 +271,14 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                         <th>Status</th>
                         <td>
                             <?php if ($is_edit): ?>
-                                <label><input type="checkbox" name="is_active" <?php checked(!empty($e['is_active'])); ?>> Published (live on site)</label>
+                                <?php if (!empty($e['is_active'])): ?>
+                                    <span style="color:#00a32a;font-weight:bold;">Published (live on site)</span>
+                                <?php else: ?>
+                                    <span style="color:#999;">Draft (not live)</span>
+                                <?php endif; ?>
+                                <input type="hidden" name="is_active" value="<?php echo !empty($e['is_active']) ? '1' : '0'; ?>">
                             <?php else: ?>
                                 <span style="color:#888;">Status will be set by Publish or Save as Draft button below</span>
-                                <input type="hidden" name="is_active" id="is_active_hidden" value="1">
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -687,7 +691,13 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
 
             <p class="tmd-ebm-submit">
                 <?php if ($is_edit): ?>
-                    <button class="button button-primary button-large">Update Event</button>
+                    <?php if (!empty($e['is_active'])): ?>
+                        <button name="save_as" value="publish" class="button button-primary button-large">Update Event</button>
+                        <button name="save_as" value="draft" class="button button-large" style="margin-left:8px;color:#d63638;">Unpublish</button>
+                    <?php else: ?>
+                        <button name="save_as" value="publish" class="button button-primary button-large" style="background:#00a32a;border-color:#00a32a;color:#fff;">Publish Event</button>
+                        <button name="save_as" value="draft" class="button button-large" style="margin-left:8px;">Save as Draft</button>
+                    <?php endif; ?>
                     <a href="<?php echo esc_url(admin_url('admin.php?page=tmd-ebm')); ?>" class="button button-large" style="margin-left:8px;">Cancel</a>
                 <?php else: ?>
                     <button name="save_as" value="publish" class="button button-primary button-large">Publish Event</button>
