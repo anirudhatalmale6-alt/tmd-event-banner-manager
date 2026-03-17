@@ -598,6 +598,14 @@ class TMD_EBM_Slider_Helper {
         // Delete RS transient caches
         delete_transient('revslider_slider_' . $slider_id);
 
+        // Increment the RS object cache namespace key.
+        // RS uses 'revslider' cache group with a namespace key to invalidate cached queries.
+        // On sites with external object cache (Redis/Memcached), raw SQL inserts don't
+        // trigger RS's built-in namespace increment, so we must do it manually.
+        $ns_key = wp_cache_get('revslider_namespace_key', 'revslider');
+        $new_ns = ($ns_key !== false) ? intval($ns_key) + 1 : 1;
+        wp_cache_set('revslider_namespace_key', $new_ns, 'revslider');
+
         // If RS cache class is available, use it
         if (class_exists('RevSliderCache')) {
             try {
@@ -610,8 +618,13 @@ class TMD_EBM_Slider_Helper {
             }
         }
 
-        // Clear object cache
+        // Clear entire object cache to ensure no stale RS data
         wp_cache_flush();
+
+        // Also clear RS transients from options table (belt and suspenders)
+        global $wpdb;
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_revslider_%'");
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_revslider_%'");
     }
 
     /**
