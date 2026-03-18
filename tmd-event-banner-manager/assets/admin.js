@@ -47,4 +47,37 @@ jQuery(function($){
 
     frame.open();
   });
+
+  // Color pickers: handle empty state
+  // When data-empty="1", color input shows default color but should submit empty
+  $('.tmd-ebm-inline-style input[type="color"]').each(function(){
+    var $input = $(this);
+    if ($input.attr('data-empty') === '1') {
+      // Create a clear button next to color input
+      var $clear = $('<span class="tmd-color-clear" title="Clear (inherit from template)" style="cursor:pointer;font-size:14px;margin-left:2px;color:#999;">&#x2715;</span>');
+      $input.after($clear);
+      $input.css('opacity', '0.4');
+      $clear.on('click', function(){
+        $input.val('').attr('data-empty', '1').css('opacity', '0.4');
+        // Add a hidden input to override the color value
+        $input.siblings('input[type="hidden"][name="' + $input.attr('name') + '"]').remove();
+        var $hidden = $('<input type="hidden">').attr('name', $input.attr('name')).val('');
+        $input.after($hidden);
+        $input.removeAttr('name'); // prevent color input from submitting
+      });
+    }
+  });
+  // When color is changed from empty state, restore it
+  $('.tmd-ebm-inline-style input[type="color"]').on('input', function(){
+    var $input = $(this);
+    if ($input.attr('data-empty') === '1') {
+      $input.removeAttr('data-empty').css('opacity', '1');
+      // Restore name if it was removed
+      var $hidden = $input.siblings('input[type="hidden"]');
+      if ($hidden.length) {
+        $input.attr('name', $hidden.attr('name'));
+        $hidden.remove();
+      }
+    }
+  });
 });

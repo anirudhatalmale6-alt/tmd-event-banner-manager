@@ -289,6 +289,24 @@ class TMD_EBM_Slider_Helper {
                     ];
                 }
             }
+            // Fix responsive: template has tablet widths of 481/367px (too wide).
+            // Use auto width so badge fits its content on all devices.
+            $layers[$discount_key]['size']['w'] = ['auto', 'auto', 'auto', 'auto', 'auto'];
+            $layers[$discount_key]['size']['h'] = ['auto', 'auto', 'auto', 'auto', 'auto'];
+            // Fix line-height to match font size (template has 40px lh with 14px font)
+            $layers[$discount_key]['lh'] = ['22px', '22px', '20px', '18px', '16px'];
+            // Fix padding for smaller devices
+            $layers[$discount_key]['p'] = [
+                't' => [5, 5, 4, 4, 3],
+                'b' => [5, 5, 4, 4, 3],
+                'l' => [14, 14, 10, 10, 8],
+                'r' => [14, 14, 10, 10, 8],
+            ];
+            // Set explicit font sizes for tablet breakpoints instead of #a
+            $cur_fs = $layers[$discount_key]['font']['size'];
+            if (($cur_fs[2] ?? '#a') === '#a') $cur_fs[2] = '12px';
+            if (($cur_fs[3] ?? '#a') === '#a') $cur_fs[3] = '11px';
+            $layers[$discount_key]['font']['size'] = $cur_fs;
         }
 
         // 5. Trust line
@@ -339,6 +357,24 @@ class TMD_EBM_Slider_Helper {
                     'string' => $event['button_bg_color'],
                 ];
             }
+            // Fix responsive: template has tablet widths of 481/367px (too wide).
+            // Use auto width so button fits its content on all devices.
+            $layers[$button_layer_key]['size']['w'] = ['auto', 'auto', 'auto', 'auto', 'auto'];
+            $layers[$button_layer_key]['size']['h'] = ['auto', 'auto', 'auto', 'auto', 'auto'];
+            // Fix line-height (template has 40px lh with 14px font)
+            $layers[$button_layer_key]['lh'] = ['22px', '22px', '20px', '18px', '16px'];
+            // Set explicit font sizes for tablet breakpoints instead of #a
+            $cur_fs = $layers[$button_layer_key]['font']['size'];
+            if (($cur_fs[2] ?? '#a') === '#a') $cur_fs[2] = '12px';
+            if (($cur_fs[3] ?? '#a') === '#a') $cur_fs[3] = '11px';
+            $layers[$button_layer_key]['font']['size'] = $cur_fs;
+            // Fix padding for tablet (template has 10/20 padding on tablet - too big)
+            $layers[$button_layer_key]['p'] = [
+                't' => [5, 5, 4, 4, 3],
+                'b' => [5, 5, 4, 4, 3],
+                'l' => [14, 14, 10, 10, 8],
+                'r' => [14, 14, 10, 10, 8],
+            ];
         }
 
         // 5. Background image

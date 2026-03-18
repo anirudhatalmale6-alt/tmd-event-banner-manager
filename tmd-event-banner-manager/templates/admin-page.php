@@ -2,6 +2,67 @@
 $e = $edit_event ?: [];
 $is_edit = !empty($e);
 $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $default); };
+// Helper: render inline style controls (color, font-size, font-weight) for a text layer
+$style_row = function($prefix, $opts = []) use ($v) {
+    $color_field = $opts['color_field'] ?? ($prefix . '_color');
+    $size_field = $opts['size_field'] ?? ($prefix . '_font_size_desktop');
+    if (in_array($prefix, ['discount', 'button', 'trust'])) {
+        $size_field = $prefix . '_font_size';
+    }
+    if ($prefix === 'discount') $color_field = 'discount_text_color';
+    if ($prefix === 'button') $color_field = 'button_text_color';
+    $weight_field = $prefix . '_font_weight';
+    $family_field = $prefix . '_font_family';
+    $has_bg = !empty($opts['has_bg']);
+    $bg_field = $prefix . '_bg_color';
+    ?>
+    <div class="tmd-ebm-inline-style" style="margin-top:6px;padding:8px 12px;background:#f9f9f9;border:1px solid #e2e2e2;border-radius:4px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#666;">
+            Color
+            <input type="color" name="<?php echo $color_field; ?>" value="<?php echo esc_attr($v($color_field) ?: '#ffffff'); ?>" style="width:32px;height:28px;padding:0;border:1px solid #ccc;cursor:pointer;"<?php echo empty($v($color_field)) ? ' data-empty="1"' : ''; ?>>
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#666;">
+            Size
+            <input type="number" name="<?php echo $size_field; ?>" value="<?php echo $v($size_field); ?>" style="width:55px;height:28px;" placeholder="Auto" min="6" max="120">
+            <span style="font-size:11px;">px</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#666;">
+            Weight
+            <select name="<?php echo $weight_field; ?>" style="height:28px;font-size:12px;">
+                <option value="" <?php selected($v($weight_field), ''); ?>>Auto</option>
+                <option value="300" <?php selected($v($weight_field), '300'); ?>>Light</option>
+                <option value="400" <?php selected($v($weight_field), '400'); ?>>Regular</option>
+                <option value="600" <?php selected($v($weight_field), '600'); ?>>Semi-Bold</option>
+                <option value="700" <?php selected($v($weight_field), '700'); ?>>Bold</option>
+                <option value="800" <?php selected($v($weight_field), '800'); ?>>Extra Bold</option>
+                <option value="900" <?php selected($v($weight_field), '900'); ?>>Black</option>
+            </select>
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#666;">
+            Font
+            <select name="<?php echo $family_field; ?>" style="height:28px;font-size:12px;max-width:140px;">
+                <option value="" <?php selected($v($family_field), ''); ?>>Template Default</option>
+                <option value="Poppins" <?php selected($v($family_field), 'Poppins'); ?>>Poppins</option>
+                <option value="Montserrat" <?php selected($v($family_field), 'Montserrat'); ?>>Montserrat</option>
+                <option value="Oswald" <?php selected($v($family_field), 'Oswald'); ?>>Oswald</option>
+                <option value="Playfair Display" <?php selected($v($family_field), 'Playfair Display'); ?>>Playfair Display</option>
+                <option value="Roboto" <?php selected($v($family_field), 'Roboto'); ?>>Roboto</option>
+                <option value="Open Sans" <?php selected($v($family_field), 'Open Sans'); ?>>Open Sans</option>
+                <option value="Lato" <?php selected($v($family_field), 'Lato'); ?>>Lato</option>
+                <option value="Raleway" <?php selected($v($family_field), 'Raleway'); ?>>Raleway</option>
+                <option value="Georgia" <?php selected($v($family_field), 'Georgia'); ?>>Georgia</option>
+                <option value="Impact" <?php selected($v($family_field), 'Impact'); ?>>Impact</option>
+            </select>
+        </label>
+        <?php if ($has_bg): ?>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#666;">
+            BG
+            <input type="color" name="<?php echo $bg_field; ?>" value="<?php echo esc_attr($v($bg_field) ?: '#e63946'); ?>" style="width:32px;height:28px;padding:0;border:1px solid #ccc;cursor:pointer;"<?php echo empty($v($bg_field)) ? ' data-empty="1"' : ''; ?>>
+        </label>
+        <?php endif; ?>
+    </div>
+    <?php
+};
 ?>
 <div class="wrap tmd-ebm-wrap">
     <h1>Event Banner Manager</h1>
@@ -269,6 +330,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                                 <option value="STYLE ESSENTIALS">STYLE ESSENTIALS</option>
                             </select>
                             <input type="text" name="eyebrow_text" id="eyebrow_text" value="<?php echo $v('eyebrow_text'); ?>" placeholder="Type or select above" style="margin-top:4px;">
+                            <?php $style_row('eyebrow'); ?>
                         </td>
                     </tr>
                     <tr>
@@ -288,6 +350,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                                 <option value="TECH &amp;<br>SMART GADGETS">TECH & SMART GADGETS</option>
                             </select>
                             <input type="text" name="headline" id="headline" value="<?php echo $v('headline'); ?>" required placeholder="Type or select above" style="margin-top:4px;">
+                            <?php $style_row('headline'); ?>
                         </td>
                     </tr>
                     <tr>
@@ -303,6 +366,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                                 <option value="Shop the season's best picks">Shop the season's best picks</option>
                             </select>
                             <input type="text" name="subheadline" id="subheadline" value="<?php echo $v('subheadline'); ?>" placeholder="Type or select above" style="margin-top:4px;">
+                            <?php $style_row('subheadline'); ?>
                         </td>
                     </tr>
                     <tr>
@@ -324,6 +388,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                                 <option value="TOP SELLERS">TOP SELLERS</option>
                             </select>
                             <input type="text" name="discount_text" id="discount_text" value="<?php echo $v('discount_text'); ?>" placeholder="Type or select above" style="margin-top:4px;">
+                            <?php $style_row('discount', ['has_bg' => true]); ?>
                         </td>
                     </tr>
                     <tr>
@@ -344,6 +409,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                                 <option value="BROWSE COLLECTION">BROWSE COLLECTION</option>
                             </select>
                             <input type="text" name="button_text" id="button_text" value="<?php echo $v('button_text','SHOP NOW'); ?>" placeholder="Type or select above" style="margin-top:4px;">
+                            <?php $style_row('button', ['has_bg' => true]); ?>
                         </td>
                     </tr>
                     <tr>
@@ -360,6 +426,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                                 <option value="Fast Delivery &bull; Secure Payment &bull; 30-Day Returns">Fast Delivery . Secure Payment . 30-Day Returns</option>
                             </select>
                             <input type="text" name="trust_text" id="trust_text" value="<?php echo $v('trust_text','Free Shipping • Easy Returns • Secure Checkout'); ?>" placeholder="Type or select above" style="margin-top:4px;">
+                            <?php $style_row('trust'); ?>
                         </td>
                     </tr>
                     <tr>
