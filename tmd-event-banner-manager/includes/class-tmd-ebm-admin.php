@@ -142,7 +142,10 @@ class TMD_EBM_Admin {
     private function nullable_color($key) {
         $val = trim($_POST[$key] ?? '');
         if ($val === '') return null;
-        return preg_match('/^#[A-Fa-f0-9]{6}$/', $val) ? $val : null;
+        // Accept #hex6 or rgba(r,g,b,a) formats
+        if (preg_match('/^#[A-Fa-f0-9]{6}$/', $val)) return $val;
+        if (preg_match('/^rgba?\(\s*\d+/', $val)) return $val;
+        return null;
     }
 
     public function save_event() {
