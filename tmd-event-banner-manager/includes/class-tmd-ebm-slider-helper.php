@@ -195,128 +195,149 @@ class TMD_EBM_Slider_Helper {
         $trust_key = $after_headline[2] ?? null;
 
         // 1. Eyebrow - replace or hide when empty
+        // Helper: apply font size override per breakpoint (preserves template values when not set)
+        $apply_font_size = function(&$layer, $desktop, $tablet, $mobile) {
+            if (empty($desktop) && empty($tablet) && empty($mobile)) return;
+            $cur = $layer['font']['size'] ?? ['16px', '16px', '#a', '#a', '12px'];
+            if (!empty($desktop)) { $cur[0] = $desktop . 'px'; $cur[1] = $desktop . 'px'; }
+            if (!empty($tablet))  { $cur[2] = $tablet . 'px';  $cur[3] = $tablet . 'px'; }
+            if (!empty($mobile))  { $cur[4] = $mobile . 'px'; }
+            $layer['font']['size'] = $cur;
+        };
+
+        // Helper: apply font overrides (family, weight, color, size)
+        $apply_font = function(&$layer, $prefix, $event) use ($apply_font_size) {
+            if (!empty($event[$prefix . '_font_family'])) {
+                $layer['font']['family'] = $event[$prefix . '_font_family'];
+            }
+            if (!empty($event[$prefix . '_font_weight'])) {
+                $layer['font']['weight'] = $event[$prefix . '_font_weight'];
+            }
+            $color_key = $prefix . '_color';
+            if (!empty($event[$color_key])) {
+                $c = $event[$color_key];
+                $layer['color'] = [$c, $c, $c, $c, $c];
+            }
+            $apply_font_size(
+                $layer,
+                $event[$prefix . '_font_size_desktop'] ?? null,
+                $event[$prefix . '_font_size_tablet'] ?? null,
+                $event[$prefix . '_font_size_mobile'] ?? null
+            );
+        };
+
+        // 1. Eyebrow
         if ($eyebrow_key !== null) {
             $eyebrow_text = $event['eyebrow_text'] ?? '';
             $layers[$eyebrow_key]['content']['text'] = $eyebrow_text;
             if (empty(trim($eyebrow_text))) {
                 $layers[$eyebrow_key]['visibility'] = [false, false, false, false, false];
             } else {
-                if (!empty($event['eyebrow_color'])) {
-                    $color = $event['eyebrow_color'];
-                    $layers[$eyebrow_key]['color'] = [$color, $color, $color, $color, $color];
-                }
-                if (!empty($event['eyebrow_font_family'])) {
-                    $layers[$eyebrow_key]['font']['family'] = $event['eyebrow_font_family'];
-                }
-                if (!empty($event['eyebrow_font_size_desktop'])) {
-                    $d = $event['eyebrow_font_size_desktop'] . 'px';
-                    $t = ($event['eyebrow_font_size_tablet'] ?? $event['eyebrow_font_size_desktop']) . 'px';
-                    $m = ($event['eyebrow_font_size_mobile'] ?? 12) . 'px';
-                    $layers[$eyebrow_key]['font']['size'] = [$d, $d, $t, $t, $m];
-                }
+                $apply_font($layers[$eyebrow_key], 'eyebrow', $event);
             }
         }
 
-        // 2. Headline - replace or clear
+        // 2. Headline
         if ($headline_key !== null) {
             $layers[$headline_key]['content']['text'] = $event['headline'] ?? '';
-            if (!empty($event['headline_font_family'])) {
-                $layers[$headline_key]['font']['family'] = $event['headline_font_family'];
-            }
-            if (!empty($event['headline_color'])) {
-                $color = $event['headline_color'];
-                $layers[$headline_key]['color'] = [$color, $color, $color, $color, $color];
-            }
-            if (!empty($event['headline_font_weight'])) {
-                $w = $event['headline_font_weight'];
-                $layers[$headline_key]['font']['weight'] = [$w, $w, $w, $w, $w];
-            }
-            if (!empty($event['headline_font_size_desktop'])) {
-                $d = $event['headline_font_size_desktop'] . 'px';
-                $t = ($event['headline_font_size_tablet'] ?? $event['headline_font_size_desktop']) . 'px';
-                $m = ($event['headline_font_size_mobile'] ?? 32) . 'px';
-                $layers[$headline_key]['font']['size'] = [$d, $d, $t, $t, $m];
-            }
+            $apply_font($layers[$headline_key], 'headline', $event);
         }
 
-        // 3. Subheadline - replace or hide when empty
+        // 3. Subheadline
         if ($subheadline_key !== null) {
             $subheadline_text = $event['subheadline'] ?? '';
             $layers[$subheadline_key]['content']['text'] = $subheadline_text;
             if (empty(trim($subheadline_text))) {
                 $layers[$subheadline_key]['visibility'] = [false, false, false, false, false];
             } else {
-                if (!empty($event['subheadline_font_family'])) {
-                    $layers[$subheadline_key]['font']['family'] = $event['subheadline_font_family'];
-                }
-                if (!empty($event['subheadline_color'])) {
-                    $color = $event['subheadline_color'];
-                    $layers[$subheadline_key]['color'] = [$color, $color, $color, $color, $color];
-                }
-                if (!empty($event['subheadline_font_weight'])) {
-                    $w = $event['subheadline_font_weight'];
-                    $layers[$subheadline_key]['font']['weight'] = [$w, $w, $w, $w, $w];
-                }
-                if (!empty($event['subheadline_font_size_desktop'])) {
-                    $d = $event['subheadline_font_size_desktop'] . 'px';
-                    $t = ($event['subheadline_font_size_tablet'] ?? $event['subheadline_font_size_desktop']) . 'px';
-                    $m = ($event['subheadline_font_size_mobile'] ?? 16) . 'px';
-                    $layers[$subheadline_key]['font']['size'] = [$d, $d, $t, $t, $m];
-                }
+                $apply_font($layers[$subheadline_key], 'subheadline', $event);
             }
         }
 
-        // 4. Discount - replace or hide when empty
+        // 4. Discount
         if ($discount_key !== null) {
             $discount_text = $event['discount_text'] ?? '';
             $layers[$discount_key]['content']['text'] = $discount_text;
             if (empty(trim($discount_text))) {
-                // Hide the discount badge when no text: transparent bg, no padding, no visibility
                 $layers[$discount_key]['bg']['color'] = [
-                    'orig' => 'transparent',
-                    'type' => 'solid',
-                    'string' => 'transparent',
+                    'orig' => 'transparent', 'type' => 'solid', 'string' => 'transparent',
                 ];
                 $layers[$discount_key]['visibility'] = [false, false, false, false, false];
             } else {
+                // Discount uses _text_color instead of _color
                 if (!empty($event['discount_text_color'])) {
-                    $color = $event['discount_text_color'];
-                    $layers[$discount_key]['color'] = [$color, $color, $color, $color, $color];
+                    $c = $event['discount_text_color'];
+                    $layers[$discount_key]['color'] = [$c, $c, $c, $c, $c];
                 }
                 if (!empty($event['discount_font_family'])) {
                     $layers[$discount_key]['font']['family'] = $event['discount_font_family'];
                 }
+                if (!empty($event['discount_font_weight'])) {
+                    $layers[$discount_key]['font']['weight'] = $event['discount_font_weight'];
+                }
+                $apply_font_size(
+                    $layers[$discount_key],
+                    $event['discount_font_size'] ?? null,
+                    $event['discount_font_size_tablet'] ?? null,
+                    $event['discount_font_size_mobile'] ?? null
+                );
+                if (!empty($event['discount_bg_color'])) {
+                    $layers[$discount_key]['bg']['color'] = [
+                        'orig' => $event['discount_bg_color'],
+                        'type' => 'solid',
+                        'string' => $event['discount_bg_color'],
+                    ];
+                }
             }
         }
 
-        // 5. Trust line - replace or clear
+        // 5. Trust line
         if ($trust_key !== null) {
             $layers[$trust_key]['content']['text'] = $event['trust_text'] ?? '';
             if (!empty($event['trust_color'])) {
-                $color = $event['trust_color'];
-                $layers[$trust_key]['color'] = [$color, $color, $color, $color, $color];
+                $c = $event['trust_color'];
+                $layers[$trust_key]['color'] = [$c, $c, $c, $c, $c];
             }
             if (!empty($event['trust_font_family'])) {
                 $layers[$trust_key]['font']['family'] = $event['trust_font_family'];
             }
+            if (!empty($event['trust_font_weight'])) {
+                $layers[$trust_key]['font']['weight'] = $event['trust_font_weight'];
+            }
+            $apply_font_size(
+                $layers[$trust_key],
+                $event['trust_font_size'] ?? null,
+                $event['trust_font_size_tablet'] ?? null,
+                $event['trust_font_size_mobile'] ?? null
+            );
         }
 
-        // 6. Button - replace or clear
+        // 6. Button
         if ($button_layer_key !== null) {
             $layers[$button_layer_key]['content']['text'] = $event['button_text'] ?? 'SHOP NOW';
+            // Button uses _text_color instead of _color
             if (!empty($event['button_text_color'])) {
-                $color = $event['button_text_color'];
-                $layers[$button_layer_key]['color'] = [$color, $color, $color, $color, $color];
+                $c = $event['button_text_color'];
+                $layers[$button_layer_key]['color'] = [$c, $c, $c, $c, $c];
             }
+            if (!empty($event['button_font_family'])) {
+                $layers[$button_layer_key]['font']['family'] = $event['button_font_family'];
+            }
+            if (!empty($event['button_font_weight'])) {
+                $layers[$button_layer_key]['font']['weight'] = $event['button_font_weight'];
+            }
+            $apply_font_size(
+                $layers[$button_layer_key],
+                $event['button_font_size'] ?? null,
+                $event['button_font_size_tablet'] ?? null,
+                $event['button_font_size_mobile'] ?? null
+            );
             if (!empty($event['button_bg_color'])) {
                 $layers[$button_layer_key]['bg']['color'] = [
                     'orig' => $event['button_bg_color'],
                     'type' => 'solid',
                     'string' => $event['button_bg_color'],
                 ];
-            }
-            if (!empty($event['button_font_family'])) {
-                $layers[$button_layer_key]['font']['family'] = $event['button_font_family'];
             }
         }
 
