@@ -450,8 +450,8 @@ class TMD_EBM_Slider_Helper {
                 'button' => ['center', 'center', 'center', 'center', 'center'],
             ],
             'right'  => [
-                'text'   => ['680px', '680px', '540px', '380px', '15px'],
-                'button' => ['846px', '846px', '540px', '380px', '15px'],
+                'text'   => ['680px', '680px', '540px', '380px', '240px'],
+                'button' => ['680px', '680px', '540px', '380px', '240px'],
             ],
         ];
 
