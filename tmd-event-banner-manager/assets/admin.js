@@ -11,6 +11,17 @@ jQuery(function($){
     $('.tmd-ebm-tab-pane[data-tab="' + tab + '"]').addClass('active');
   });
 
+  // Preset dropdown → fills the text input below
+  $('.tmd-preset-select').on('change', function(){
+    var val = $(this).val();
+    var targetId = $(this).data('target');
+    if (val) {
+      $('#' + targetId).val(val);
+    }
+    // Reset dropdown to placeholder after filling
+    $(this).val('');
+  });
+
   // Media uploader
   $('.tmd-ebm-media-button').on('click', function(e){
     e.preventDefault();
@@ -27,6 +38,11 @@ jQuery(function($){
       var attachment = frame.state().get('selection').first().toJSON();
       $('#' + targetId).val(attachment.id || '');
       $('#' + targetUrl).val(attachment.url || '');
+      // Update preview image
+      var $preview = $('#' + targetUrl).siblings('.tmd-ebm-img-preview');
+      if ($preview.length) {
+        $preview.attr('src', attachment.url || '').show();
+      }
     });
 
     frame.open();

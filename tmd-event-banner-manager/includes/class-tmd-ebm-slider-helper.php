@@ -38,24 +38,31 @@ class TMD_EBM_Slider_Helper {
     }
 
     /**
-     * Find the DB ID of an existing event slide by scanning params for tmd_event_slug.
-     * Uses direct DB query for read-only efficiency (no cache issues with reads).
+     * Find the DB ID of an existing event slide by scanning params.
+     * Matches by tmd_event_slug first, then falls back to tmd_event_id.
+     * This prevents orphaned slides when the event slug is changed.
      */
-    private static function find_event_slide_id(int $slider_id, string $event_slug): int {
+    private static function find_event_slide_id(int $slider_id, string $event_slug, int $event_id = 0): int {
         global $wpdb;
         $table = $wpdb->prefix . 'revslider_slides7';
         $slides = $wpdb->get_results($wpdb->prepare(
-            "SELECT id, params FROM {$table} WHERE slider_id = %d AND static = 0",
+            "SELECT id, params FROM {$table} WHERE slider_id = %d AND (static = '' OR static = 0 OR static IS NULL)",
             $slider_id
         ), ARRAY_A);
 
+        $id_match = 0;
         foreach ($slides as $slide) {
             $params = json_decode($slide['params'], true);
+            // Exact slug match - best match
             if (!empty($params['tmd_event_slug']) && $params['tmd_event_slug'] === $event_slug) {
                 return (int) $slide['id'];
             }
+            // Event ID match - fallback when slug was changed
+            if ($event_id > 0 && !empty($params['tmd_event_id']) && (int) $params['tmd_event_id'] === $event_id) {
+                $id_match = (int) $slide['id'];
+            }
         }
-        return 0;
+        return $id_match;
     }
 
     /**
@@ -130,9 +137,8 @@ class TMD_EBM_Slider_Helper {
             $type = $layer['type'] ?? ($layer['subtype'] ?? '');
             $text = $layer['content']['text'] ?? '';
 
-            // Background layer
-            if ((!empty($layer['subtype']) && $layer['subtype'] === 'slidebg')
-                || (!empty($layer['rTo']) && $layer['rTo'] === 'slide')) {
+            // Background layer (must be slidebg specifically, not zone containers)
+            if (!empty($layer['subtype']) && $layer['subtype'] === 'slidebg') {
                 $bg_layer_key = $key;
                 continue;
             }
@@ -188,21 +194,26 @@ class TMD_EBM_Slider_Helper {
         $discount_key = $after_headline[1] ?? null;
         $trust_key = $after_headline[2] ?? null;
 
-        // 1. Eyebrow - replace or clear
+        // 1. Eyebrow - replace or hide when empty
         if ($eyebrow_key !== null) {
-            $layers[$eyebrow_key]['content']['text'] = $event['eyebrow_text'] ?? '';
-            if (!empty($event['eyebrow_color'])) {
-                $color = $event['eyebrow_color'];
-                $layers[$eyebrow_key]['color'] = [$color, $color, $color, $color, $color];
-            }
-            if (!empty($event['eyebrow_font_family'])) {
-                $layers[$eyebrow_key]['font']['family'] = $event['eyebrow_font_family'];
-            }
-            if (!empty($event['eyebrow_font_size_desktop'])) {
-                $d = $event['eyebrow_font_size_desktop'] . 'px';
-                $t = ($event['eyebrow_font_size_tablet'] ?? $event['eyebrow_font_size_desktop']) . 'px';
-                $m = ($event['eyebrow_font_size_mobile'] ?? 12) . 'px';
-                $layers[$eyebrow_key]['font']['size'] = [$d, $d, $t, $t, $m];
+            $eyebrow_text = $event['eyebrow_text'] ?? '';
+            $layers[$eyebrow_key]['content']['text'] = $eyebrow_text;
+            if (empty(trim($eyebrow_text))) {
+                $layers[$eyebrow_key]['visibility'] = [false, false, false, false, false];
+            } else {
+                if (!empty($event['eyebrow_color'])) {
+                    $color = $event['eyebrow_color'];
+                    $layers[$eyebrow_key]['color'] = [$color, $color, $color, $color, $color];
+                }
+                if (!empty($event['eyebrow_font_family'])) {
+                    $layers[$eyebrow_key]['font']['family'] = $event['eyebrow_font_family'];
+                }
+                if (!empty($event['eyebrow_font_size_desktop'])) {
+                    $d = $event['eyebrow_font_size_desktop'] . 'px';
+                    $t = ($event['eyebrow_font_size_tablet'] ?? $event['eyebrow_font_size_desktop']) . 'px';
+                    $m = ($event['eyebrow_font_size_mobile'] ?? 12) . 'px';
+                    $layers[$eyebrow_key]['font']['size'] = [$d, $d, $t, $t, $m];
+                }
             }
         }
 
@@ -228,37 +239,53 @@ class TMD_EBM_Slider_Helper {
             }
         }
 
-        // 3. Subheadline - replace or clear
+        // 3. Subheadline - replace or hide when empty
         if ($subheadline_key !== null) {
-            $layers[$subheadline_key]['content']['text'] = $event['subheadline'] ?? '';
-            if (!empty($event['subheadline_font_family'])) {
-                $layers[$subheadline_key]['font']['family'] = $event['subheadline_font_family'];
-            }
-            if (!empty($event['subheadline_color'])) {
-                $color = $event['subheadline_color'];
-                $layers[$subheadline_key]['color'] = [$color, $color, $color, $color, $color];
-            }
-            if (!empty($event['subheadline_font_weight'])) {
-                $w = $event['subheadline_font_weight'];
-                $layers[$subheadline_key]['font']['weight'] = [$w, $w, $w, $w, $w];
-            }
-            if (!empty($event['subheadline_font_size_desktop'])) {
-                $d = $event['subheadline_font_size_desktop'] . 'px';
-                $t = ($event['subheadline_font_size_tablet'] ?? $event['subheadline_font_size_desktop']) . 'px';
-                $m = ($event['subheadline_font_size_mobile'] ?? 16) . 'px';
-                $layers[$subheadline_key]['font']['size'] = [$d, $d, $t, $t, $m];
+            $subheadline_text = $event['subheadline'] ?? '';
+            $layers[$subheadline_key]['content']['text'] = $subheadline_text;
+            if (empty(trim($subheadline_text))) {
+                $layers[$subheadline_key]['visibility'] = [false, false, false, false, false];
+            } else {
+                if (!empty($event['subheadline_font_family'])) {
+                    $layers[$subheadline_key]['font']['family'] = $event['subheadline_font_family'];
+                }
+                if (!empty($event['subheadline_color'])) {
+                    $color = $event['subheadline_color'];
+                    $layers[$subheadline_key]['color'] = [$color, $color, $color, $color, $color];
+                }
+                if (!empty($event['subheadline_font_weight'])) {
+                    $w = $event['subheadline_font_weight'];
+                    $layers[$subheadline_key]['font']['weight'] = [$w, $w, $w, $w, $w];
+                }
+                if (!empty($event['subheadline_font_size_desktop'])) {
+                    $d = $event['subheadline_font_size_desktop'] . 'px';
+                    $t = ($event['subheadline_font_size_tablet'] ?? $event['subheadline_font_size_desktop']) . 'px';
+                    $m = ($event['subheadline_font_size_mobile'] ?? 16) . 'px';
+                    $layers[$subheadline_key]['font']['size'] = [$d, $d, $t, $t, $m];
+                }
             }
         }
 
-        // 4. Discount - replace or clear
+        // 4. Discount - replace or hide when empty
         if ($discount_key !== null) {
-            $layers[$discount_key]['content']['text'] = $event['discount_text'] ?? '';
-            if (!empty($event['discount_text_color'])) {
-                $color = $event['discount_text_color'];
-                $layers[$discount_key]['color'] = [$color, $color, $color, $color, $color];
-            }
-            if (!empty($event['discount_font_family'])) {
-                $layers[$discount_key]['font']['family'] = $event['discount_font_family'];
+            $discount_text = $event['discount_text'] ?? '';
+            $layers[$discount_key]['content']['text'] = $discount_text;
+            if (empty(trim($discount_text))) {
+                // Hide the discount badge when no text: transparent bg, no padding, no visibility
+                $layers[$discount_key]['bg']['color'] = [
+                    'orig' => 'transparent',
+                    'type' => 'solid',
+                    'string' => 'transparent',
+                ];
+                $layers[$discount_key]['visibility'] = [false, false, false, false, false];
+            } else {
+                if (!empty($event['discount_text_color'])) {
+                    $color = $event['discount_text_color'];
+                    $layers[$discount_key]['color'] = [$color, $color, $color, $color, $color];
+                }
+                if (!empty($event['discount_font_family'])) {
+                    $layers[$discount_key]['font']['family'] = $event['discount_font_family'];
+                }
             }
         }
 
@@ -306,52 +333,65 @@ class TMD_EBM_Slider_Helper {
                 $layers[$bg_layer_key]['bg']['image']['lib_id'] = (int) $event['background_image_id'];
                 $layers[$bg_layer_key]['bg']['image']['lib'] = 'medialibrary';
             }
-            $layers[$bg_layer_key]['bg']['image']['size'] = 'cover';
-            $layers[$bg_layer_key]['bg']['image']['pos'] = ['x' => '50%', 'y' => '50%'];
+            // Preserve template's size/pos settings; only set defaults if missing
+            if (!isset($layers[$bg_layer_key]['bg']['image']['size'])) {
+                $layers[$bg_layer_key]['bg']['image']['size'] = 'cover';
+            }
+            if (!isset($layers[$bg_layer_key]['bg']['image']['pos'])) {
+                $layers[$bg_layer_key]['bg']['image']['pos'] = ['x' => '50%', 'y' => '50%'];
+            }
         }
 
         // 6. Text position per device
+        // RS7 uses pixel-based positioning (not "left"/"right" keywords).
+        // Values based on actual template slides: left-side (#84,86,87) and right-side (#85).
+        // Slider widths: [1200, 1200, 1024, 778, 480]
         $pos_desktop = $event['text_position'] ?? 'left';
         $pos_tablet = $event['text_position_tablet'] ?? $pos_desktop;
         $pos_mobile = $event['text_position_mobile'] ?? $pos_desktop;
 
-        $all_text_keys = array_filter(
-            [$headline_key, $subheadline_key, $extra_text_key, $button_layer_key],
+        // Pixel positions per breakpoint: [desktop, laptop, tablet, tablet-phone, mobile]
+        $pos_px = [
+            'left'   => ['text' => null, 'button' => null], // keep template values
+            'center' => [
+                'text'   => ['center', 'center', 'center', 'center', 'center'],
+                'button' => ['center', 'center', 'center', 'center', 'center'],
+            ],
+            'right'  => [
+                'text'   => ['680px', '680px', '540px', '380px', '15px'],
+                'button' => ['846px', '846px', '540px', '380px', '15px'],
+            ],
+        ];
+
+        $all_pos_keys = array_filter(
+            [$eyebrow_key, $headline_key, $subheadline_key, $discount_key, $trust_key, $button_layer_key],
             function($k) { return $k !== null; }
         );
 
-        $pos_map = [
-            'left'   => ['x' => null, 'aO' => 'ml'],
-            'center' => ['x' => 'center', 'aO' => 'mc'],
-            'right'  => ['x' => 'right', 'aO' => 'mr'],
-        ];
-
-        $d = $pos_map[$pos_desktop] ?? $pos_map['left'];
-        $t = $pos_map[$pos_tablet] ?? $pos_map['left'];
-        $m = $pos_map[$pos_mobile] ?? $pos_map['left'];
-
         if ($pos_desktop !== 'left' || $pos_tablet !== 'left' || $pos_mobile !== 'left') {
-            foreach ($all_text_keys as $lk) {
+            foreach ($all_pos_keys as $lk) {
                 if (!isset($layers[$lk])) continue;
 
+                $is_button = ($lk === $button_layer_key);
                 $cur_x = $layers[$lk]['pos']['x'] ?? ['0px', '0px', '#a', '#a', '0px'];
 
-                $dx = $d['x'] ?? $cur_x[0];
-                $tx = $t['x'] ?? ($cur_x[2] ?? '#a');
-                $mx = $m['x'] ?? ($cur_x[4] ?? $cur_x[0]);
-
-                $layers[$lk]['pos']['x'] = [$dx, $dx, $tx, $tx, $mx];
-
                 if ($pos_desktop !== 'left') {
-                    $layers[$lk]['attr']['aO'] = $d['aO'];
-                    $layers[$lk]['attr']['tO'] = $d['aO'];
-                } elseif ($pos_tablet !== 'left') {
-                    $layers[$lk]['attr']['aO'] = $t['aO'];
-                    $layers[$lk]['attr']['tO'] = $t['aO'];
-                } elseif ($pos_mobile !== 'left') {
-                    $layers[$lk]['attr']['aO'] = $m['aO'];
-                    $layers[$lk]['attr']['tO'] = $m['aO'];
+                    $px = $pos_px[$pos_desktop] ?? $pos_px['left'];
+                    $vals = $is_button ? $px['button'] : $px['text'];
+                    if ($vals) { $cur_x[0] = $vals[0]; $cur_x[1] = $vals[1]; }
                 }
+                if ($pos_tablet !== 'left') {
+                    $px = $pos_px[$pos_tablet] ?? $pos_px['left'];
+                    $vals = $is_button ? $px['button'] : $px['text'];
+                    if ($vals) { $cur_x[2] = $vals[2]; $cur_x[3] = $vals[3]; }
+                }
+                if ($pos_mobile !== 'left') {
+                    $px = $pos_px[$pos_mobile] ?? $pos_px['left'];
+                    $vals = $is_button ? $px['button'] : $px['text'];
+                    if ($vals) { $cur_x[4] = $vals[4]; }
+                }
+
+                $layers[$lk]['pos']['x'] = $cur_x;
             }
         }
 
@@ -420,6 +460,7 @@ class TMD_EBM_Slider_Helper {
      * Uses Rev Slider PHP API for proper cache invalidation and compatibility.
      */
     public static function update_master_slider(array $event): array {
+        global $wpdb;
         $payload = self::merge_event_into_payload($event);
         update_option('tmd_ebm_last_payload', $payload);
 
@@ -444,9 +485,10 @@ class TMD_EBM_Slider_Helper {
 
         $slider_id = $slider->get_id();
         $event_slug = $event['event_slug'] ?? 'default';
+        $event_id = (int) ($event['id'] ?? 0);
 
-        // Find existing event slide
-        $existing_slide_id = self::find_event_slide_id($slider_id, $event_slug);
+        // Find existing event slide (by slug or event ID)
+        $existing_slide_id = self::find_event_slide_id($slider_id, $event_slug, $event_id);
 
         // Get template slide
         $template_slide_id = self::get_template_slide_id($slider_id);
@@ -508,7 +550,12 @@ class TMD_EBM_Slider_Helper {
             }
 
             $event_params = self::build_event_params($template_params, $event, (int) $new_id);
-            $event_params['order'] = '1'; // Place at beginning with other slides
+            // Place after all template slides so it uses the same fly-over transition
+            $max_order = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT MAX(CAST(JSON_UNQUOTE(JSON_EXTRACT(params, '$.order')) AS UNSIGNED)) FROM {$wpdb->prefix}revslider_slides7 WHERE slider_id = %d AND (static = '' OR static IS NULL)",
+                $slider_id
+            ));
+            $event_params['order'] = $max_order + 1;
 
             $data = [
                 'version' => '7.0.0',
@@ -532,7 +579,7 @@ class TMD_EBM_Slider_Helper {
     /**
      * Remove an event slide from the Banner slider using RS API.
      */
-    public static function remove_event_slide(string $event_slug): array {
+    public static function remove_event_slide(string $event_slug, int $event_id = 0): array {
         if (!self::rs_available()) {
             return ['success' => false, 'message' => 'Rev Slider classes not available.'];
         }
@@ -544,7 +591,7 @@ class TMD_EBM_Slider_Helper {
         }
 
         $slider_id = $slider->get_id();
-        $slide_id = self::find_event_slide_id($slider_id, $event_slug);
+        $slide_id = self::find_event_slide_id($slider_id, $event_slug, $event_id);
 
         if (!$slide_id) {
             return ['success' => true, 'message' => 'No event slide found to remove.'];
@@ -565,7 +612,7 @@ class TMD_EBM_Slider_Helper {
     /**
      * Clear Slider Revolution caches using the RS PHP API.
      */
-    private static function clear_rs_cache(int $slider_id): void {
+    public static function clear_rs_cache(int $slider_id): void {
         // Use RS's own cache clearing API
         try {
             $cache = RevSliderGlobals::instance()->get('RevSliderCache');

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: TMD Event Banner Manager
  * Description: Backend event interface + event resolver + product sync + Slider Revolution master-template automation hooks for seasonal banners.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Naeem Sufi
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TMD_EBM_VERSION', '1.1.0');
+define('TMD_EBM_VERSION', '1.2.0');
 define('TMD_EBM_FILE', __FILE__);
 define('TMD_EBM_PATH', plugin_dir_path(__FILE__));
 define('TMD_EBM_URL', plugin_dir_url(__FILE__));
@@ -42,3 +42,13 @@ add_action('plugins_loaded', function () {
 add_action('wp_head', function () {
     echo '<style>image_lists,image_lists img{display:none!important;visibility:hidden!important;width:0!important;height:0!important;position:absolute!important;overflow:hidden!important}</style>' . "\n";
 }, 1);
+
+// Fix Rev Slider script loading: remove async strategy to prevent slider delay on load
+add_filter('script_loader_tag', function ($tag, $handle) {
+    if (in_array($handle, ['tp-tools', 'sr7'], true)) {
+        $tag = str_replace(' data-wp-strategy="async"', '', $tag);
+        // Fix malformed ="async" attribute
+        $tag = str_replace('="async"', '', $tag);
+    }
+    return $tag;
+}, 10, 2);

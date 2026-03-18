@@ -21,6 +21,12 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
     <?php if (!empty($_GET['unpublished'])): ?>
         <div class="notice notice-info is-dismissible"><p>Event unpublished and banner slide removed.</p></div>
     <?php endif; ?>
+    <?php if (!empty($_GET['slide_on'])): ?>
+        <div class="notice notice-success is-dismissible"><p>Slide turned ON (published).</p></div>
+    <?php endif; ?>
+    <?php if (!empty($_GET['slide_off'])): ?>
+        <div class="notice notice-info is-dismissible"><p>Slide turned OFF (unpublished).</p></div>
+    <?php endif; ?>
 
     <!-- EVENT LIST -->
     <div class="tmd-ebm-panel">
@@ -112,7 +118,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
     <?php if (!empty($banner_slides)): ?>
     <div class="tmd-ebm-panel" style="margin-top:24px;">
         <h2>Homepage Slider Overview</h2>
-        <p class="description">All slides in the homepage slider (<?php echo esc_html($target_alias); ?>). Event slides are managed here; manual slides can be edited in Slider Revolution.</p>
+        <p class="description">All slides in the homepage slider (<?php echo esc_html($target_alias); ?>). Use the On/Off toggle to show or hide any slide.</p>
         <table class="widefat striped tmd-ebm-events-table">
             <thead>
                 <tr>
@@ -120,32 +126,53 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                     <th style="width:40px;">Order</th>
                     <th>Title</th>
                     <th style="width:120px;">Type</th>
-                    <th style="width:50px;">Layers</th>
+                    <th style="width:80px;">Status</th>
                     <th style="width:180px;">Preview</th>
+                    <th style="width:80px;">Action</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($banner_slides as $bs): ?>
-                    <tr>
+                <?php foreach ($banner_slides as $bs):
+                    $is_on = ($bs['publish_state'] ?? 'published') === 'published';
+                ?>
+                    <tr<?php echo !$is_on ? ' style="opacity:0.5;"' : ''; ?>>
                         <td><?php echo $bs['id']; ?></td>
                         <td><?php echo $bs['order']; ?></td>
                         <td><?php echo esc_html($bs['title']); ?></td>
                         <td>
-                            <?php if ($bs['is_global']): ?>
-                                <span style="color:#999;">Global Layers</span>
-                            <?php elseif ($bs['event_slug']): ?>
+                            <?php if ($bs['event_slug']): ?>
                                 <span style="color:#0a0;font-weight:bold;">Event: <?php echo esc_html($bs['event_slug']); ?></span>
                             <?php else: ?>
                                 <span style="color:#06c;">Manual</span>
                             <?php endif; ?>
                         </td>
-                        <td style="text-align:center;"><?php echo $bs['layer_count']; ?></td>
+                        <td style="text-align:center;">
+                            <?php if ($is_on): ?>
+                                <span style="color:#00a32a;font-weight:bold;">ON</span>
+                            <?php else: ?>
+                                <span style="color:#d63638;font-weight:bold;">OFF</span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <?php if ($bs['bg_url']): ?>
                                 <img src="<?php echo esc_url($bs['bg_url']); ?>" style="max-width:160px;height:auto;border:1px solid #ddd;border-radius:3px;">
                             <?php else: ?>
                                 <span style="color:#999;">No preview</span>
                             <?php endif; ?>
+                        </td>
+                        <td>
+                            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline;">
+                                <?php wp_nonce_field('tmd_ebm_toggle_slide'); ?>
+                                <input type="hidden" name="action" value="tmd_ebm_toggle_slide">
+                                <input type="hidden" name="slide_id" value="<?php echo $bs['id']; ?>">
+                                <?php if ($is_on): ?>
+                                    <input type="hidden" name="new_state" value="unpublished">
+                                    <button class="button button-small" style="color:#d63638;">Turn Off</button>
+                                <?php else: ?>
+                                    <input type="hidden" name="new_state" value="published">
+                                    <button class="button button-small" style="color:#00a32a;">Turn On</button>
+                                <?php endif; ?>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -216,16 +243,67 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                         <p class="description">Lower number = higher priority when dates overlap</p></td>
                     </tr>
                     <tr>
+                        <th>Text Position</th>
+                        <td>
+                            <select name="text_position">
+                                <option value="left" <?php selected($v('text_position','left'), 'left'); ?>>Left</option>
+                                <option value="center" <?php selected($v('text_position','left'), 'center'); ?>>Center</option>
+                                <option value="right" <?php selected($v('text_position','left'), 'right'); ?>>Right</option>
+                            </select>
+                            <p class="description">Position of text layers on the banner</p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th>Eyebrow Text</th>
-                        <td><input type="text" name="eyebrow_text" value="<?php echo $v('eyebrow_text'); ?>" placeholder="SPRING SAVINGS EVENT"></td>
+                        <td>
+                            <select class="tmd-preset-select" data-target="eyebrow_text">
+                                <option value="">-- Pick a preset or type below --</option>
+                                <option value="SPRING SAVINGS EVENT">SPRING SAVINGS EVENT</option>
+                                <option value="LIMITED TIME OFFER">LIMITED TIME OFFER</option>
+                                <option value="HOLIDAY SPECIAL">HOLIDAY SPECIAL</option>
+                                <option value="NEW COLLECTION">NEW COLLECTION</option>
+                                <option value="FLASH SALE">FLASH SALE</option>
+                                <option value="CLEARANCE EVENT">CLEARANCE EVENT</option>
+                                <option value="DEALS YOU'LL LOVE">DEALS YOU'LL LOVE</option>
+                                <option value="SMART LIVING">SMART LIVING</option>
+                                <option value="STYLE ESSENTIALS">STYLE ESSENTIALS</option>
+                            </select>
+                            <input type="text" name="eyebrow_text" id="eyebrow_text" value="<?php echo $v('eyebrow_text'); ?>" placeholder="Type or select above" style="margin-top:4px;">
+                        </td>
                     </tr>
                     <tr>
                         <th>Headline</th>
-                        <td><input type="text" name="headline" value="<?php echo $v('headline'); ?>" required placeholder="EASTER SALE"></td>
+                        <td>
+                            <select class="tmd-preset-select" data-target="headline">
+                                <option value="">-- Pick a preset or type below --</option>
+                                <option value="EASTER SALE">EASTER SALE</option>
+                                <option value="EASTER<br>WEEKEND DEALS">EASTER WEEKEND DEALS</option>
+                                <option value="SUMMER SALE">SUMMER SALE</option>
+                                <option value="BLACK FRIDAY">BLACK FRIDAY</option>
+                                <option value="CHRISTMAS DEALS">CHRISTMAS DEALS</option>
+                                <option value="FLASH SALE">FLASH SALE</option>
+                                <option value="NEW ARRIVALS">NEW ARRIVALS</option>
+                                <option value="LIMITED TIME<br>DEALS">LIMITED TIME DEALS</option>
+                                <option value="FASHION &amp;<br>ACCESSORIES">FASHION & ACCESSORIES</option>
+                                <option value="TECH &amp;<br>SMART GADGETS">TECH & SMART GADGETS</option>
+                            </select>
+                            <input type="text" name="headline" id="headline" value="<?php echo $v('headline'); ?>" required placeholder="Type or select above" style="margin-top:4px;">
+                        </td>
                     </tr>
                     <tr>
                         <th>Subheadline</th>
-                        <td><input type="text" name="subheadline" value="<?php echo $v('subheadline'); ?>" placeholder="Celebrate with limited time savings"></td>
+                        <td>
+                            <select class="tmd-preset-select" data-target="subheadline">
+                                <option value="">-- Pick a preset or type below --</option>
+                                <option value="Celebrate with limited time savings">Celebrate with limited time savings</option>
+                                <option value="Top trending products at unmatched prices">Top trending products at unmatched prices</option>
+                                <option value="Upgrade your everyday with smart deals">Upgrade your everyday with smart deals</option>
+                                <option value="New season styles and trending looks">New season styles and trending looks</option>
+                                <option value="Don't miss these incredible deals">Don't miss these incredible deals</option>
+                                <option value="Shop the season's best picks">Shop the season's best picks</option>
+                            </select>
+                            <input type="text" name="subheadline" id="subheadline" value="<?php echo $v('subheadline'); ?>" placeholder="Type or select above" style="margin-top:4px;">
+                        </td>
                     </tr>
                     <tr>
                         <th>Description</th>
@@ -233,7 +311,20 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                     </tr>
                     <tr>
                         <th>Discount Text</th>
-                        <td><input type="text" name="discount_text" value="<?php echo $v('discount_text'); ?>" placeholder="UP TO 50% OFF"></td>
+                        <td>
+                            <select class="tmd-preset-select" data-target="discount_text">
+                                <option value="">-- Pick a preset or type below --</option>
+                                <option value="UP TO 30% OFF">UP TO 30% OFF</option>
+                                <option value="UP TO 50% OFF">UP TO 50% OFF</option>
+                                <option value="UP TO 60% OFF">UP TO 60% OFF</option>
+                                <option value="UP TO 70% OFF">UP TO 70% OFF</option>
+                                <option value="BUY 1 GET 1 FREE">BUY 1 GET 1 FREE</option>
+                                <option value="FREE SHIPPING">FREE SHIPPING</option>
+                                <option value="NEW ARRIVALS">NEW ARRIVALS</option>
+                                <option value="TOP SELLERS">TOP SELLERS</option>
+                            </select>
+                            <input type="text" name="discount_text" id="discount_text" value="<?php echo $v('discount_text'); ?>" placeholder="Type or select above" style="margin-top:4px;">
+                        </td>
                     </tr>
                     <tr>
                         <th>Coupon Code</th>
@@ -242,7 +333,18 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                     </tr>
                     <tr>
                         <th>Button Text</th>
-                        <td><input type="text" name="button_text" value="<?php echo $v('button_text','SHOP NOW'); ?>" placeholder="SHOP NOW"></td>
+                        <td>
+                            <select class="tmd-preset-select" data-target="button_text">
+                                <option value="">-- Pick a preset or type below --</option>
+                                <option value="SHOP NOW">SHOP NOW</option>
+                                <option value="SHOP DEALS">SHOP DEALS</option>
+                                <option value="SHOP EASTER DEALS">SHOP EASTER DEALS</option>
+                                <option value="SHOP FASHION">SHOP FASHION</option>
+                                <option value="SHOP TECH DEALS">SHOP TECH DEALS</option>
+                                <option value="BROWSE COLLECTION">BROWSE COLLECTION</option>
+                            </select>
+                            <input type="text" name="button_text" id="button_text" value="<?php echo $v('button_text','SHOP NOW'); ?>" placeholder="Type or select above" style="margin-top:4px;">
+                        </td>
                     </tr>
                     <tr>
                         <th>Button Link</th>
@@ -250,7 +352,15 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                     </tr>
                     <tr>
                         <th>Trust Line</th>
-                        <td><input type="text" name="trust_text" value="<?php echo $v('trust_text','Free Shipping • Easy Returns • Secure Checkout'); ?>"></td>
+                        <td>
+                            <select class="tmd-preset-select" data-target="trust_text">
+                                <option value="">-- Pick a preset or type below --</option>
+                                <option value="Free Shipping &bull; Easy Returns &bull; Secure Checkout">Free Shipping . Easy Returns . Secure Checkout</option>
+                                <option value="Free Shipping &bull; Secure Checkout &bull; Easy Returns">Free Shipping . Secure Checkout . Easy Returns</option>
+                                <option value="Fast Delivery &bull; Secure Payment &bull; 30-Day Returns">Fast Delivery . Secure Payment . 30-Day Returns</option>
+                            </select>
+                            <input type="text" name="trust_text" id="trust_text" value="<?php echo $v('trust_text','Free Shipping • Easy Returns • Secure Checkout'); ?>" placeholder="Type or select above" style="margin-top:4px;">
+                        </td>
                     </tr>
                     <tr>
                         <th>Background Image</th>
@@ -258,9 +368,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                             <input type="hidden" name="background_image_id" id="background_image_id" value="<?php echo $v('background_image_id'); ?>">
                             <input type="text" name="background_image_url" id="background_image_url" value="<?php echo $v('background_image_url'); ?>" class="regular-text" placeholder="Image URL">
                             <button type="button" class="button tmd-ebm-media-button" data-target-id="background_image_id" data-target-url="background_image_url">Browse</button>
-                            <?php if (!empty($e['background_image_url'])): ?>
-                                <br><img src="<?php echo esc_url($e['background_image_url']); ?>" style="max-width:400px;height:auto;margin-top:8px;border:1px solid #ddd;">
-                            <?php endif; ?>
+                            <br><img class="tmd-ebm-img-preview" src="<?php echo esc_url($e['background_image_url'] ?? ''); ?>" style="max-width:400px;height:auto;margin-top:8px;border:1px solid #ddd;<?php echo empty($e['background_image_url']) ? 'display:none;' : ''; ?>">
                         </td>
                     </tr>
                     <tr>
@@ -289,16 +397,6 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
             <div class="tmd-ebm-tab-pane" data-tab="desktop">
                 <table class="form-table">
                     <tr>
-                        <th>Text Position</th>
-                        <td>
-                            <select name="text_position">
-                                <option value="left" <?php selected($v('text_position','left'), 'left'); ?>>Left</option>
-                                <option value="center" <?php selected($v('text_position','left'), 'center'); ?>>Center</option>
-                                <option value="right" <?php selected($v('text_position','left'), 'right'); ?>>Right</option>
-                            </select>
-                        </td>
-                    </tr>
-                    <tr>
                         <th>Canvas Size</th>
                         <td>
                             <input type="number" name="canvas_width" value="<?php echo $v('canvas_width','1200'); ?>" style="width:100px;"> x
@@ -322,24 +420,26 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                     </tr>
                 </table>
 
+                <p class="description" style="margin:10px 0;padding:8px;background:#f0f6fc;border-left:3px solid #2271b1;">Leave font fields empty to inherit from the template slide. Only fill in if you want to override.</p>
+
                 <!-- Eyebrow -->
                 <h3 class="tmd-ebm-layer-title">Eyebrow</h3>
                 <table class="form-table">
                     <tr>
                         <th>Font Family</th>
-                        <td><input type="text" name="eyebrow_font_family" value="<?php echo $v('eyebrow_font_family','Montserrat SemiBold'); ?>" style="width:250px;"></td>
+                        <td><input type="text" name="eyebrow_font_family" value="<?php echo $v('eyebrow_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
                     </tr>
                     <tr>
                         <th>Font Weight</th>
-                        <td><input type="text" name="eyebrow_font_weight" value="<?php echo $v('eyebrow_font_weight','600'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="eyebrow_font_weight" value="<?php echo $v('eyebrow_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="eyebrow_font_size_desktop" value="<?php echo $v('eyebrow_font_size_desktop','16'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="eyebrow_font_size_desktop" value="<?php echo $v('eyebrow_font_size_desktop'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                     <tr>
                         <th>Color</th>
-                        <td><input type="text" name="eyebrow_color" value="<?php echo $v('eyebrow_color','#FFD400'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="eyebrow_color" value="<?php echo $v('eyebrow_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Position X / Y</th>
@@ -355,19 +455,19 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Family</th>
-                        <td><input type="text" name="headline_font_family" value="<?php echo $v('headline_font_family','Montserrat ExtraBold'); ?>" style="width:250px;"></td>
+                        <td><input type="text" name="headline_font_family" value="<?php echo $v('headline_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
                     </tr>
                     <tr>
                         <th>Font Weight</th>
-                        <td><input type="text" name="headline_font_weight" value="<?php echo $v('headline_font_weight','800'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="headline_font_weight" value="<?php echo $v('headline_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="headline_font_size_desktop" value="<?php echo $v('headline_font_size_desktop','58'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="headline_font_size_desktop" value="<?php echo $v('headline_font_size_desktop'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                     <tr>
                         <th>Color</th>
-                        <td><input type="text" name="headline_color" value="<?php echo $v('headline_color','#FFFFFF'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="headline_color" value="<?php echo $v('headline_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Position X / Y</th>
@@ -387,19 +487,19 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Family</th>
-                        <td><input type="text" name="subheadline_font_family" value="<?php echo $v('subheadline_font_family','Open Sans SemiBold'); ?>" style="width:250px;"></td>
+                        <td><input type="text" name="subheadline_font_family" value="<?php echo $v('subheadline_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
                     </tr>
                     <tr>
                         <th>Font Weight</th>
-                        <td><input type="text" name="subheadline_font_weight" value="<?php echo $v('subheadline_font_weight','600'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="subheadline_font_weight" value="<?php echo $v('subheadline_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="subheadline_font_size_desktop" value="<?php echo $v('subheadline_font_size_desktop','22'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="subheadline_font_size_desktop" value="<?php echo $v('subheadline_font_size_desktop'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                     <tr>
                         <th>Color</th>
-                        <td><input type="text" name="subheadline_color" value="<?php echo $v('subheadline_color','#FFFFFF'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="subheadline_color" value="<?php echo $v('subheadline_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Position X / Y</th>
@@ -415,27 +515,27 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Family</th>
-                        <td><input type="text" name="discount_font_family" value="<?php echo $v('discount_font_family','Montserrat'); ?>" style="width:250px;"></td>
+                        <td><input type="text" name="discount_font_family" value="<?php echo $v('discount_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
                     </tr>
                     <tr>
                         <th>Font Weight</th>
-                        <td><input type="text" name="discount_font_weight" value="<?php echo $v('discount_font_weight','700'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="discount_font_weight" value="<?php echo $v('discount_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="discount_font_size" value="<?php echo $v('discount_font_size','16'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="discount_font_size" value="<?php echo $v('discount_font_size'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                     <tr>
                         <th>Text Color</th>
-                        <td><input type="text" name="discount_text_color" value="<?php echo $v('discount_text_color','#FFFFFF'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="discount_text_color" value="<?php echo $v('discount_text_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Background Color</th>
-                        <td><input type="text" name="discount_bg_color" value="<?php echo $v('discount_bg_color','#FF5A36'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="discount_bg_color" value="<?php echo $v('discount_bg_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Border Radius</th>
-                        <td><input type="number" name="discount_border_radius" value="<?php echo $v('discount_border_radius','20'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="discount_border_radius" value="<?php echo $v('discount_border_radius'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                     <tr>
                         <th>Position X / Y</th>
@@ -451,31 +551,31 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Family</th>
-                        <td><input type="text" name="button_font_family" value="<?php echo $v('button_font_family','Montserrat'); ?>" style="width:250px;"></td>
+                        <td><input type="text" name="button_font_family" value="<?php echo $v('button_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
                     </tr>
                     <tr>
                         <th>Font Weight</th>
-                        <td><input type="text" name="button_font_weight" value="<?php echo $v('button_font_weight','700'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="button_font_weight" value="<?php echo $v('button_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="button_font_size" value="<?php echo $v('button_font_size','17'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="button_font_size" value="<?php echo $v('button_font_size'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                     <tr>
                         <th>Text Color</th>
-                        <td><input type="text" name="button_text_color" value="<?php echo $v('button_text_color','#FFFFFF'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="button_text_color" value="<?php echo $v('button_text_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Background Color</th>
-                        <td><input type="text" name="button_bg_color" value="<?php echo $v('button_bg_color','#0B2C48'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="button_bg_color" value="<?php echo $v('button_bg_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Hover BG Color</th>
-                        <td><input type="text" name="button_hover_bg_color" value="<?php echo $v('button_hover_bg_color','#154A75'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="button_hover_bg_color" value="<?php echo $v('button_hover_bg_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Border Radius</th>
-                        <td><input type="number" name="button_border_radius" value="<?php echo $v('button_border_radius','6'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="button_border_radius" value="<?php echo $v('button_border_radius'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                     <tr>
                         <th>Position X / Y</th>
@@ -491,19 +591,19 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Family</th>
-                        <td><input type="text" name="trust_font_family" value="<?php echo $v('trust_font_family','Open Sans'); ?>" style="width:250px;"></td>
+                        <td><input type="text" name="trust_font_family" value="<?php echo $v('trust_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
                     </tr>
                     <tr>
                         <th>Font Weight</th>
-                        <td><input type="text" name="trust_font_weight" value="<?php echo $v('trust_font_weight','400'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="trust_font_weight" value="<?php echo $v('trust_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="trust_font_size" value="<?php echo $v('trust_font_size','14'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="trust_font_size" value="<?php echo $v('trust_font_size'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                     <tr>
                         <th>Color</th>
-                        <td><input type="text" name="trust_color" value="<?php echo $v('trust_color','#D9D9D9'); ?>" style="width:100px;"></td>
+                        <td><input type="text" name="trust_color" value="<?php echo $v('trust_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
                     </tr>
                     <tr>
                         <th>Position X / Y</th>
@@ -578,7 +678,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="eyebrow_font_size_tablet" value="<?php echo $v('eyebrow_font_size_tablet','14'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="eyebrow_font_size_tablet" value="<?php echo $v('eyebrow_font_size_tablet'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
 
@@ -586,7 +686,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="headline_font_size_tablet" value="<?php echo $v('headline_font_size_tablet','42'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="headline_font_size_tablet" value="<?php echo $v('headline_font_size_tablet'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
 
@@ -594,7 +694,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="subheadline_font_size_tablet" value="<?php echo $v('subheadline_font_size_tablet','18'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="subheadline_font_size_tablet" value="<?php echo $v('subheadline_font_size_tablet'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
 
@@ -602,7 +702,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="discount_font_size_tablet" value="<?php echo $v('discount_font_size_tablet','14'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="discount_font_size_tablet" value="<?php echo $v('discount_font_size_tablet'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
 
@@ -610,7 +710,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="button_font_size_tablet" value="<?php echo $v('button_font_size_tablet','15'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="button_font_size_tablet" value="<?php echo $v('button_font_size_tablet'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
 
@@ -618,7 +718,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="trust_font_size_tablet" value="<?php echo $v('trust_font_size_tablet','12'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="trust_font_size_tablet" value="<?php echo $v('trust_font_size_tablet'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
             </div>
@@ -644,7 +744,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="eyebrow_font_size_mobile" value="<?php echo $v('eyebrow_font_size_mobile','12'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="eyebrow_font_size_mobile" value="<?php echo $v('eyebrow_font_size_mobile'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
 
@@ -652,7 +752,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="headline_font_size_mobile" value="<?php echo $v('headline_font_size_mobile','32'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="headline_font_size_mobile" value="<?php echo $v('headline_font_size_mobile'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
 
@@ -660,7 +760,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="subheadline_font_size_mobile" value="<?php echo $v('subheadline_font_size_mobile','16'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="subheadline_font_size_mobile" value="<?php echo $v('subheadline_font_size_mobile'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
 
@@ -668,7 +768,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="discount_font_size_mobile" value="<?php echo $v('discount_font_size_mobile','12'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="discount_font_size_mobile" value="<?php echo $v('discount_font_size_mobile'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
 
@@ -676,7 +776,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="button_font_size_mobile" value="<?php echo $v('button_font_size_mobile','14'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="button_font_size_mobile" value="<?php echo $v('button_font_size_mobile'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
 
@@ -684,7 +784,7 @@ $v = function($key, $default = '') use ($e) { return esc_attr($e[$key] ?? $defau
                 <table class="form-table">
                     <tr>
                         <th>Font Size</th>
-                        <td><input type="number" name="trust_font_size_mobile" value="<?php echo $v('trust_font_size_mobile','11'); ?>" style="width:80px;"> px</td>
+                        <td><input type="number" name="trust_font_size_mobile" value="<?php echo $v('trust_font_size_mobile'); ?>" style="width:80px;" placeholder="Auto"> px</td>
                     </tr>
                 </table>
             </div>
