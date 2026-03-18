@@ -756,4 +756,98 @@ class TMD_EBM_Slider_Helper {
             'message' => "Slider '{$alias}' (ID: {$slider->get_id()}) found. Layers auto-detected by type/size.",
         ];
     }
+
+    /**
+     * Sync all event slides based on current date.
+     * - Events with start/end dates: slide published only during range
+     * - Events with empty dates: always published
+     * - Events with is_active = 0: never published
+     */
+    public static function sync_slides_by_date(): array {
+        global $wpdb;
+        $table = TMD_EBM_TABLE;
+        $slides_table = $wpdb->prefix . 'revslider_slides7';
+        $today = current_time('Y-m-d');
+        $results = [];
+
+        $alias = self::get_master_alias();
+        $slider = self::get_slider($alias);
+        if (!$slider) {
+            return ['error' => 'Slider not found'];
+        }
+        $slider_id = $slider->get_id();
+
+        // Get ALL events (active and inactive)
+        $events = $wpdb->get_results("SELECT * FROM {$table} ORDER BY priority ASC", ARRAY_A);
+
+        $changed = false;
+
+        foreach ($events as $event) {
+            $event_id = (int) $event['id'];
+            $slug = $event['event_slug'];
+            $name = $event['event_name'];
+
+            // Determine if this event should be visible today
+            $should_show = false;
+            if (!$event['is_active']) {
+                $should_show = false;
+            } elseif (empty($event['start_date']) || $event['start_date'] === '0000-00-00') {
+                // No dates set = always show
+                $should_show = true;
+            } else {
+                // Has dates: check if today is in range
+                $start = $event['start_date'];
+                $end = !empty($event['end_date']) && $event['end_date'] !== '0000-00-00' ? $event['end_date'] : '9999-12-31';
+                $should_show = ($today >= $start && $today <= $end);
+            }
+
+            // Find existing RS slide
+            $slide_id = self::find_event_slide_id($slider_id, $slug, $event_id);
+
+            if ($should_show && $slide_id) {
+                // Should show AND slide exists: make sure it's published
+                $params_json = $wpdb->get_var($wpdb->prepare("SELECT params FROM {$slides_table} WHERE id = %d", $slide_id));
+                $params = json_decode($params_json, true);
+                $current_state = $params['publish']['state'] ?? 'published';
+
+                if ($current_state !== 'published') {
+                    $params['publish']['state'] = 'published';
+                    $wpdb->update($slides_table, ['params' => wp_json_encode($params)], ['id' => $slide_id]);
+                    $results[] = "PUBLISHED: #{$slide_id} ({$name}) - date in range";
+                    $changed = true;
+                } else {
+                    $results[] = "OK: #{$slide_id} ({$name}) - already published";
+                }
+            } elseif ($should_show && !$slide_id) {
+                // Should show but no slide: create it
+                $result = self::update_master_slider($event);
+                $results[] = "CREATED: ({$name}) - " . ($result['message'] ?? 'unknown');
+                $changed = true;
+            } elseif (!$should_show && $slide_id) {
+                // Should NOT show but slide exists: unpublish it
+                $params_json = $wpdb->get_var($wpdb->prepare("SELECT params FROM {$slides_table} WHERE id = %d", $slide_id));
+                $params = json_decode($params_json, true);
+                $current_state = $params['publish']['state'] ?? 'published';
+
+                if ($current_state !== 'unpublished') {
+                    $params['publish']['state'] = 'unpublished';
+                    $wpdb->update($slides_table, ['params' => wp_json_encode($params)], ['id' => $slide_id]);
+                    $results[] = "UNPUBLISHED: #{$slide_id} ({$name}) - date out of range";
+                    $changed = true;
+                } else {
+                    $results[] = "OK: #{$slide_id} ({$name}) - already unpublished";
+                }
+            } else {
+                // Should NOT show and no slide: nothing to do
+                $results[] = "SKIP: ({$name}) - inactive/no slide";
+            }
+        }
+
+        // Clear caches if anything changed
+        if ($changed) {
+            self::clear_rs_cache($slider_id);
+        }
+
+        return $results;
+    }
 }
