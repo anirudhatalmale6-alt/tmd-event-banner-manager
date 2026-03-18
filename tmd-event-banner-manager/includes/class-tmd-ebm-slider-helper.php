@@ -582,8 +582,12 @@ class TMD_EBM_Slider_Helper {
         // Find existing event slide (by slug or event ID)
         $existing_slide_id = self::find_event_slide_id($slider_id, $event_slug, $event_id);
 
-        // Get template slide
+        // Get template slide (prefer a non-event slide; fall back to existing event slide)
         $template_slide_id = self::get_template_slide_id($slider_id);
+        if (!$template_slide_id && $existing_slide_id) {
+            // Use existing event slide as its own template (preserves layer structure)
+            $template_slide_id = $existing_slide_id;
+        }
         if (!$template_slide_id) {
             return [
                 'success' => false,

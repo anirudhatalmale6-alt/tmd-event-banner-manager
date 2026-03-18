@@ -349,7 +349,7 @@ $style_row = function($prefix, $opts = []) use ($v) {
                                 <option value="FASHION &amp;<br>ACCESSORIES">FASHION & ACCESSORIES</option>
                                 <option value="TECH &amp;<br>SMART GADGETS">TECH & SMART GADGETS</option>
                             </select>
-                            <input type="text" name="headline" id="headline" value="<?php echo $v('headline'); ?>" required placeholder="Type or select above" style="margin-top:4px;">
+                            <textarea name="headline" id="headline" rows="2" required placeholder="Type or select above (Enter = new line)" style="margin-top:4px;width:100%;"><?php echo esc_textarea(str_replace(["<br>","<br/>","<br />"], "\n", $e["headline"] ?? "")); ?></textarea>
                             <?php $style_row('headline'); ?>
                         </td>
                     </tr>
@@ -365,7 +365,7 @@ $style_row = function($prefix, $opts = []) use ($v) {
                                 <option value="Don't miss these incredible deals">Don't miss these incredible deals</option>
                                 <option value="Shop the season's best picks">Shop the season's best picks</option>
                             </select>
-                            <input type="text" name="subheadline" id="subheadline" value="<?php echo $v('subheadline'); ?>" placeholder="Type or select above" style="margin-top:4px;">
+                            <textarea name="subheadline" id="subheadline" rows="2" placeholder="Type or select above (Enter = new line)" style="margin-top:4px;width:100%;"><?php echo esc_textarea(str_replace(["<br>","<br/>","<br />"], "\n", $e["subheadline"] ?? "")); ?></textarea>
                             <?php $style_row('subheadline'); ?>
                         </td>
                     </tr>
@@ -433,7 +433,7 @@ $style_row = function($prefix, $opts = []) use ($v) {
                         <th>Background Image</th>
                         <td>
                             <input type="hidden" name="background_image_id" id="background_image_id" value="<?php echo $v('background_image_id'); ?>">
-                            <input type="text" name="background_image_url" id="background_image_url" value="<?php echo $v('background_image_url'); ?>" class="regular-text" placeholder="Image URL">
+                            <input type="text" name="background_image_url" id="background_image_url" value="<?php echo $v('background_image_url'); ?>" style="width:calc(100% - 110px);" placeholder="Image URL">
                             <button type="button" class="button tmd-ebm-media-button" data-target-id="background_image_id" data-target-url="background_image_url">Browse</button>
                             <br><img class="tmd-ebm-img-preview" src="<?php echo esc_url($e['background_image_url'] ?? ''); ?>" style="max-width:400px;height:auto;margin-top:8px;border:1px solid #ddd;<?php echo empty($e['background_image_url']) ? 'display:none;' : ''; ?>">
                         </td>
