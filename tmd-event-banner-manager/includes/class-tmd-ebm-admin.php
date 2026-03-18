@@ -34,7 +34,7 @@ class TMD_EBM_Admin {
     public function render() {
         global $wpdb;
         $table = TMD_EBM_TABLE;
-        $events = $wpdb->get_results("SELECT * FROM {$table} ORDER BY start_date DESC, priority ASC LIMIT 50", ARRAY_A);
+        $events = $wpdb->get_results("SELECT * FROM {$table} ORDER BY is_active DESC, priority ASC, id ASC LIMIT 50", ARRAY_A);
         $master_alias = get_option(TMD_EBM_Slider_Helper::MASTER_ALIAS_OPTION, 'MASTER_EVENT_TEMPLATE');
         $edit_event = null;
         if (!empty($_GET['edit'])) {

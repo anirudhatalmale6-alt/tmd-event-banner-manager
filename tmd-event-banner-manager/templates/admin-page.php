@@ -111,24 +111,42 @@ $style_row = function($prefix, $opts = []) use ($v) {
                 <?php else: ?>
                     <?php foreach ($events as $evt):
                         $today = current_time('Y-m-d');
-                        $is_current = (!empty($evt['is_active']) && $evt['start_date'] <= $today && $evt['end_date'] >= $today);
+                        $has_dates = (!empty($evt['start_date']) && $evt['start_date'] !== '0000-00-00');
+                        $in_range = $has_dates ? ($evt['start_date'] <= $today && $evt['end_date'] >= $today) : true;
+                        $is_live = (!empty($evt['is_active']) && $in_range);
+
+                        // Find matching slide order from $banner_slides
+                        $slide_order = '';
+                        foreach ($banner_slides as $bs) {
+                            if ($bs['event_slug'] === $evt['event_slug']) {
+                                $slide_order = $bs['order'];
+                                break;
+                            }
+                        }
+
                         $status = '';
                         if (!$evt['is_active']) {
                             $status = '<span style="color:#999;">Disabled</span>';
-                        } elseif ($is_current) {
-                            $status = '<span style="color:#0a0;font-weight:bold;">ACTIVE NOW</span>';
-                        } elseif ($evt['start_date'] > $today) {
+                        } elseif ($is_live) {
+                            $status = '<span style="color:#0a0;font-weight:bold;">LIVE</span>';
+                        } elseif ($has_dates && $evt['start_date'] > $today) {
                             $status = '<span style="color:#06c;">Scheduled</span>';
+                        } elseif ($has_dates && $evt['end_date'] < $today) {
+                            $status = '<span style="color:#c60;">Ended</span>';
                         } else {
-                            $status = '<span style="color:#999;">Expired</span>';
+                            $status = '<span style="color:#999;">Inactive</span>';
                         }
+
+                        // Display dates nicely
+                        $disp_start = ($has_dates) ? esc_html($evt['start_date']) : '<span style="color:#aaa;">Always</span>';
+                        $disp_end = (!empty($evt['end_date']) && $evt['end_date'] !== '0000-00-00') ? esc_html($evt['end_date']) : '<span style="color:#aaa;">Always</span>';
                     ?>
-                        <tr<?php echo $is_current ? ' style="background:#eeffee;"' : ''; ?>>
+                        <tr style="<?php echo $is_live ? 'background:#eeffee;' : 'opacity:0.5;'; ?>">
                             <td><?php echo (int)$evt['id']; ?></td>
                             <td><strong><?php echo esc_html($evt['event_name']); ?></strong></td>
                             <td><code><?php echo esc_html($evt['event_slug']); ?></code></td>
-                            <td><?php echo esc_html($evt['start_date']); ?></td>
-                            <td><?php echo esc_html($evt['end_date']); ?></td>
+                            <td><?php echo $disp_start; ?></td>
+                            <td><?php echo $disp_end; ?></td>
                             <td><?php echo (int)$evt['priority']; ?></td>
                             <td><?php echo $status; ?></td>
                             <td>
@@ -292,11 +310,11 @@ $style_row = function($prefix, $opts = []) use ($v) {
                     </tr>
                     <tr>
                         <th>Start Date</th>
-                        <td><input type="date" name="start_date" value="<?php echo $v('start_date'); ?>" required></td>
+                        <td><input type="date" name="start_date" value="<?php echo $v('start_date'); ?>"> <span style="font-size:12px;color:#888;">Leave empty = always show</span></td>
                     </tr>
                     <tr>
                         <th>End Date</th>
-                        <td><input type="date" name="end_date" value="<?php echo $v('end_date'); ?>" required></td>
+                        <td><input type="date" name="end_date" value="<?php echo $v('end_date'); ?>"> <span style="font-size:12px;color:#888;">Leave empty = always show</span></td>
                     </tr>
                     <tr>
                         <th>Priority</th>
