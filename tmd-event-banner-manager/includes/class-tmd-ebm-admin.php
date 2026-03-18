@@ -261,25 +261,30 @@ class TMD_EBM_Admin {
         }
 
         $event = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $event_id), ARRAY_A);
-        if ($event && !empty($event['is_active'])) {
-            update_option('tmd_current_event_slug', $event['event_slug']);
-            TMD_EBM_Slider_Helper::update_master_slider($event);
-        } elseif ($event && empty($event['is_active'])) {
-            // If event was deactivated, remove its slide from the banner
-            TMD_EBM_Slider_Helper::remove_event_slide($event['event_slug'], (int) $event['id']);
-            // If this was the current event, clear the slug
-            $current = get_option('tmd_current_event_slug', '');
-            if ($current === $event['event_slug']) {
-                // Try to find another active event
-                $next = TMD_EBM_Event_Resolver::get_active_event();
-                if ($next) {
-                    update_option('tmd_current_event_slug', $next['event_slug']);
-                    TMD_EBM_Slider_Helper::update_master_slider($next);
-                } else {
-                    update_option('tmd_current_event_slug', 'default');
+
+        // Buffer output: RS API / cache clearing may produce warnings that prevent redirect
+        ob_start();
+        try {
+            if ($event && !empty($event['is_active'])) {
+                update_option('tmd_current_event_slug', $event['event_slug']);
+                TMD_EBM_Slider_Helper::update_master_slider($event);
+            } elseif ($event && empty($event['is_active'])) {
+                TMD_EBM_Slider_Helper::remove_event_slide($event['event_slug'], (int) $event['id']);
+                $current = get_option('tmd_current_event_slug', '');
+                if ($current === $event['event_slug']) {
+                    $next = TMD_EBM_Event_Resolver::get_active_event();
+                    if ($next) {
+                        update_option('tmd_current_event_slug', $next['event_slug']);
+                        TMD_EBM_Slider_Helper::update_master_slider($next);
+                    } else {
+                        update_option('tmd_current_event_slug', 'default');
+                    }
                 }
             }
+        } catch (\Exception $ex) {
+            // Swallow RS errors so redirect still works
         }
+        ob_end_clean();
 
         wp_safe_redirect(admin_url('admin.php?page=tmd-ebm&edit=' . $event_id . '&saved=1'));
         exit;
@@ -289,11 +294,15 @@ class TMD_EBM_Admin {
         if (!current_user_can('manage_options')) wp_die('Unauthorized');
         check_admin_referer('tmd_ebm_run_update');
 
-        $event = TMD_EBM_Event_Resolver::get_active_event();
-        if ($event) {
-            update_option('tmd_current_event_slug', $event['event_slug']);
-            TMD_EBM_Slider_Helper::update_master_slider($event);
-        }
+        ob_start();
+        try {
+            $event = TMD_EBM_Event_Resolver::get_active_event();
+            if ($event) {
+                update_option('tmd_current_event_slug', $event['event_slug']);
+                TMD_EBM_Slider_Helper::update_master_slider($event);
+            }
+        } catch (\Exception $ex) {}
+        ob_end_clean();
 
         wp_safe_redirect(admin_url('admin.php?page=tmd-ebm&updated=1'));
         exit;
@@ -311,27 +320,29 @@ class TMD_EBM_Admin {
         if ($event_id > 0) {
             $wpdb->update($table, ['is_active' => $new_state], ['id' => $event_id], ['%d'], ['%d']);
 
-            $event = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $event_id), ARRAY_A);
-            if ($event) {
-                if ($new_state) {
-                    // Publishing - create/update slider slide
-                    update_option('tmd_current_event_slug', $event['event_slug']);
-                    TMD_EBM_Slider_Helper::update_master_slider($event);
-                } else {
-                    // Unpublishing - remove slider slide
-                    TMD_EBM_Slider_Helper::remove_event_slide($event['event_slug'], (int) $event['id']);
-                    $current = get_option('tmd_current_event_slug', '');
-                    if ($current === $event['event_slug']) {
-                        $next = TMD_EBM_Event_Resolver::get_active_event();
-                        if ($next) {
-                            update_option('tmd_current_event_slug', $next['event_slug']);
-                            TMD_EBM_Slider_Helper::update_master_slider($next);
-                        } else {
-                            update_option('tmd_current_event_slug', 'default');
+            ob_start();
+            try {
+                $event = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $event_id), ARRAY_A);
+                if ($event) {
+                    if ($new_state) {
+                        update_option('tmd_current_event_slug', $event['event_slug']);
+                        TMD_EBM_Slider_Helper::update_master_slider($event);
+                    } else {
+                        TMD_EBM_Slider_Helper::remove_event_slide($event['event_slug'], (int) $event['id']);
+                        $current = get_option('tmd_current_event_slug', '');
+                        if ($current === $event['event_slug']) {
+                            $next = TMD_EBM_Event_Resolver::get_active_event();
+                            if ($next) {
+                                update_option('tmd_current_event_slug', $next['event_slug']);
+                                TMD_EBM_Slider_Helper::update_master_slider($next);
+                            } else {
+                                update_option('tmd_current_event_slug', 'default');
+                            }
                         }
                     }
                 }
-            }
+            } catch (\Exception $ex) {}
+            ob_end_clean();
         }
 
         $action = $new_state ? 'published' : 'unpublished';
@@ -361,11 +372,14 @@ class TMD_EBM_Admin {
                 $params['publish']['state'] = $new_state;
                 $wpdb->update($table, ['params' => wp_json_encode($params)], ['id' => $slide_id], ['%s'], ['%d']);
 
-                // Clear RS cache
-                $slider_id = $wpdb->get_var($wpdb->prepare("SELECT slider_id FROM {$table} WHERE id = %d", $slide_id));
-                if ($slider_id) {
-                    TMD_EBM_Slider_Helper::clear_rs_cache((int) $slider_id);
-                }
+                ob_start();
+                try {
+                    $slider_id = $wpdb->get_var($wpdb->prepare("SELECT slider_id FROM {$table} WHERE id = %d", $slide_id));
+                    if ($slider_id) {
+                        TMD_EBM_Slider_Helper::clear_rs_cache((int) $slider_id);
+                    }
+                } catch (\Exception $ex) {}
+                ob_end_clean();
             }
         }
 
