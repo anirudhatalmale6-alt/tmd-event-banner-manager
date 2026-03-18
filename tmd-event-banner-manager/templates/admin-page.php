@@ -203,7 +203,7 @@ $style_row = function($prefix, $opts = []) use ($v) {
                 <tr>
                     <th style="width:50px;">ID</th>
                     <th style="width:40px;">Order</th>
-                    <th>Title</th>
+                    <th>Title / Headline</th>
                     <th style="width:120px;">Type</th>
                     <th style="width:80px;">Status</th>
                     <th style="width:180px;">Preview</th>
@@ -217,7 +217,7 @@ $style_row = function($prefix, $opts = []) use ($v) {
                     <tr<?php echo !$is_on ? ' style="opacity:0.5;"' : ''; ?>>
                         <td><?php echo $bs['id']; ?></td>
                         <td><?php echo $bs['order']; ?></td>
-                        <td><?php echo esc_html($bs['title']); ?></td>
+                        <td><strong><?php echo esc_html($bs['title']); ?></strong><?php if (!empty($bs['headline'])): ?><br><span style="color:#555;font-size:12px;"><?php echo esc_html($bs['headline']); ?></span><?php endif; ?></td>
                         <td>
                             <?php if ($bs['event_slug']): ?>
                                 <span style="color:#0a0;font-weight:bold;">Event: <?php echo esc_html($bs['event_slug']); ?></span>

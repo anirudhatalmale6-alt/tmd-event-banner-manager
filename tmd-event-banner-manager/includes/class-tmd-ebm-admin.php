@@ -81,10 +81,27 @@ class TMD_EBM_Admin {
                 }
                 // Skip static/global layers from overview (they appear on all slides, managed by RS)
                 if ($is_global) continue;
+                // Extract headline text from layers (largest font = headline)
+                $headline_text = '';
+                $max_fs = 0;
+                foreach ($l as $layer) {
+                    if (($layer['type'] ?? '') === 'text' && empty($layer['subtype'])) {
+                        $fs = intval($layer['font']['size'][0] ?? 0);
+                        if ($fs > $max_fs) {
+                            $max_fs = $fs;
+                            $headline_text = $layer['content']['text'] ?? '';
+                        }
+                    }
+                }
+                // Strip <br> for display
+                $headline_text = str_replace(['<br>', '<br/>', '<br />'], ' / ', $headline_text);
+                $headline_text = wp_strip_all_tags($headline_text);
+
                 $banner_slides[] = [
                     'id' => (int)$rs['id'],
                     'order' => (int)$rs['slide_order'],
                     'title' => $title,
+                    'headline' => $headline_text,
                     'event_slug' => $event_slug,
                     'is_global' => false,
                     'bg_url' => $bg_url,
