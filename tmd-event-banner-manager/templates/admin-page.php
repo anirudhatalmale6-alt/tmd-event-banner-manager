@@ -487,27 +487,11 @@ $style_row = function($prefix, $opts = []) use ($v) {
                     </tr>
                 </table>
 
-                <p class="description" style="margin:10px 0;padding:8px;background:#f0f6fc;border-left:3px solid #2271b1;">Leave font fields empty to inherit from the template slide. Only fill in if you want to override.</p>
+                <p class="description" style="margin:10px 0;padding:8px;background:#f0f6fc;border-left:3px solid #2271b1;">Font, color, weight and family are set in the Content tab (inline style controls). Use this tab for positioning, sizing and animations.</p>
 
                 <!-- Eyebrow -->
                 <h3 class="tmd-ebm-layer-title">Eyebrow</h3>
                 <table class="form-table">
-                    <tr>
-                        <th>Font Family</th>
-                        <td><input type="text" name="eyebrow_font_family" value="<?php echo $v('eyebrow_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Weight</th>
-                        <td><input type="text" name="eyebrow_font_weight" value="<?php echo $v('eyebrow_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Size</th>
-                        <td><input type="number" name="eyebrow_font_size_desktop" value="<?php echo $v('eyebrow_font_size_desktop'); ?>" style="width:80px;" placeholder="Auto"> px</td>
-                    </tr>
-                    <tr>
-                        <th>Color</th>
-                        <td><input type="text" name="eyebrow_color" value="<?php echo $v('eyebrow_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
                     <tr>
                         <th>Position X / Y</th>
                         <td>
@@ -520,22 +504,6 @@ $style_row = function($prefix, $opts = []) use ($v) {
                 <!-- Headline -->
                 <h3 class="tmd-ebm-layer-title">Headline</h3>
                 <table class="form-table">
-                    <tr>
-                        <th>Font Family</th>
-                        <td><input type="text" name="headline_font_family" value="<?php echo $v('headline_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Weight</th>
-                        <td><input type="text" name="headline_font_weight" value="<?php echo $v('headline_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Size</th>
-                        <td><input type="number" name="headline_font_size_desktop" value="<?php echo $v('headline_font_size_desktop'); ?>" style="width:80px;" placeholder="Auto"> px</td>
-                    </tr>
-                    <tr>
-                        <th>Color</th>
-                        <td><input type="text" name="headline_color" value="<?php echo $v('headline_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
                     <tr>
                         <th>Position X / Y</th>
                         <td>
@@ -553,22 +521,6 @@ $style_row = function($prefix, $opts = []) use ($v) {
                 <h3 class="tmd-ebm-layer-title">Subheadline</h3>
                 <table class="form-table">
                     <tr>
-                        <th>Font Family</th>
-                        <td><input type="text" name="subheadline_font_family" value="<?php echo $v('subheadline_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Weight</th>
-                        <td><input type="text" name="subheadline_font_weight" value="<?php echo $v('subheadline_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Size</th>
-                        <td><input type="number" name="subheadline_font_size_desktop" value="<?php echo $v('subheadline_font_size_desktop'); ?>" style="width:80px;" placeholder="Auto"> px</td>
-                    </tr>
-                    <tr>
-                        <th>Color</th>
-                        <td><input type="text" name="subheadline_color" value="<?php echo $v('subheadline_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
-                    <tr>
                         <th>Position X / Y</th>
                         <td>
                             <input type="number" name="subheadline_x" value="<?php echo $v('subheadline_x','80'); ?>" style="width:80px;">
@@ -580,26 +532,6 @@ $style_row = function($prefix, $opts = []) use ($v) {
                 <!-- Discount Badge -->
                 <h3 class="tmd-ebm-layer-title">Discount Badge</h3>
                 <table class="form-table">
-                    <tr>
-                        <th>Font Family</th>
-                        <td><input type="text" name="discount_font_family" value="<?php echo $v('discount_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Weight</th>
-                        <td><input type="text" name="discount_font_weight" value="<?php echo $v('discount_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Size</th>
-                        <td><input type="number" name="discount_font_size" value="<?php echo $v('discount_font_size'); ?>" style="width:80px;" placeholder="Auto"> px</td>
-                    </tr>
-                    <tr>
-                        <th>Text Color</th>
-                        <td><input type="text" name="discount_text_color" value="<?php echo $v('discount_text_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
-                    <tr>
-                        <th>Background Color</th>
-                        <td><input type="text" name="discount_bg_color" value="<?php echo $v('discount_bg_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
                     <tr>
                         <th>Border Radius</th>
                         <td><input type="number" name="discount_border_radius" value="<?php echo $v('discount_border_radius'); ?>" style="width:80px;" placeholder="Auto"> px</td>
@@ -616,26 +548,6 @@ $style_row = function($prefix, $opts = []) use ($v) {
                 <!-- Button -->
                 <h3 class="tmd-ebm-layer-title">Button</h3>
                 <table class="form-table">
-                    <tr>
-                        <th>Font Family</th>
-                        <td><input type="text" name="button_font_family" value="<?php echo $v('button_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Weight</th>
-                        <td><input type="text" name="button_font_weight" value="<?php echo $v('button_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Size</th>
-                        <td><input type="number" name="button_font_size" value="<?php echo $v('button_font_size'); ?>" style="width:80px;" placeholder="Auto"> px</td>
-                    </tr>
-                    <tr>
-                        <th>Text Color</th>
-                        <td><input type="text" name="button_text_color" value="<?php echo $v('button_text_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
-                    <tr>
-                        <th>Background Color</th>
-                        <td><input type="text" name="button_bg_color" value="<?php echo $v('button_bg_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
                     <tr>
                         <th>Hover BG Color</th>
                         <td><input type="text" name="button_hover_bg_color" value="<?php echo $v('button_hover_bg_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
@@ -656,22 +568,6 @@ $style_row = function($prefix, $opts = []) use ($v) {
                 <!-- Trust Line -->
                 <h3 class="tmd-ebm-layer-title">Trust Line</h3>
                 <table class="form-table">
-                    <tr>
-                        <th>Font Family</th>
-                        <td><input type="text" name="trust_font_family" value="<?php echo $v('trust_font_family'); ?>" style="width:250px;" placeholder="Inherited from template"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Weight</th>
-                        <td><input type="text" name="trust_font_weight" value="<?php echo $v('trust_font_weight'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
-                    <tr>
-                        <th>Font Size</th>
-                        <td><input type="number" name="trust_font_size" value="<?php echo $v('trust_font_size'); ?>" style="width:80px;" placeholder="Auto"> px</td>
-                    </tr>
-                    <tr>
-                        <th>Color</th>
-                        <td><input type="text" name="trust_color" value="<?php echo $v('trust_color'); ?>" style="width:100px;" placeholder="Inherited"></td>
-                    </tr>
                     <tr>
                         <th>Position X / Y</th>
                         <td>

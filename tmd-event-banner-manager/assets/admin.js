@@ -53,31 +53,35 @@ jQuery(function($){
   $('.tmd-ebm-inline-style input[type="color"]').each(function(){
     var $input = $(this);
     if ($input.attr('data-empty') === '1') {
+      // Immediately swap name to hidden empty input so form submits '' not '#ffffff'
+      var name = $input.attr('name');
+      $input.removeAttr('name');
+      var $hidden = $('<input type="hidden">').attr('name', name).val('');
+      $input.after($hidden);
+      $input.data('orig-name', name);
+      $input.css('opacity', '0.4');
       // Create a clear button next to color input
       var $clear = $('<span class="tmd-color-clear" title="Clear (inherit from template)" style="cursor:pointer;font-size:14px;margin-left:2px;color:#999;">&#x2715;</span>');
       $input.after($clear);
-      $input.css('opacity', '0.4');
       $clear.on('click', function(){
-        $input.val('').attr('data-empty', '1').css('opacity', '0.4');
-        // Add a hidden input to override the color value
-        $input.siblings('input[type="hidden"][name="' + $input.attr('name') + '"]').remove();
-        var $hidden = $('<input type="hidden">').attr('name', $input.attr('name')).val('');
-        $input.after($hidden);
-        $input.removeAttr('name'); // prevent color input from submitting
+        var n = $input.data('orig-name');
+        $input.val('#ffffff').attr('data-empty', '1').css('opacity', '0.4');
+        $input.removeAttr('name');
+        $input.siblings('input[type="hidden"][name="' + n + '"]').remove();
+        var $h = $('<input type="hidden">').attr('name', n).val('');
+        $input.after($h);
       });
     }
   });
-  // When color is changed from empty state, restore it
+  // When color is changed from empty state, restore name so the picked color submits
   $('.tmd-ebm-inline-style input[type="color"]').on('input', function(){
     var $input = $(this);
     if ($input.attr('data-empty') === '1') {
+      var name = $input.data('orig-name');
       $input.removeAttr('data-empty').css('opacity', '1');
-      // Restore name if it was removed
-      var $hidden = $input.siblings('input[type="hidden"]');
-      if ($hidden.length) {
-        $input.attr('name', $hidden.attr('name'));
-        $hidden.remove();
-      }
+      // Remove hidden placeholder and restore name on the color input
+      $input.siblings('input[type="hidden"][name="' + name + '"]').remove();
+      $input.attr('name', name);
     }
   });
 });
