@@ -235,12 +235,37 @@ class TMD_EBM_Slider_Helper {
             } else {
                 $apply_font($layers[$eyebrow_key], 'eyebrow', $event);
             }
+            // Fix tablet width (template has 481/367px)
+            $ew = $layers[$eyebrow_key]['size']['w'] ?? [];
+            if (is_array($ew)) {
+                if (($ew[2] ?? '') === '481px') $ew[2] = 'auto';
+                if (($ew[3] ?? '') === '367px') $ew[3] = 'auto';
+                $layers[$eyebrow_key]['size']['w'] = $ew;
+            }
+            if (($layers[$eyebrow_key]['lh'][0] ?? '') === '40px') {
+                $layers[$eyebrow_key]['lh'] = ['20px', '20px', '18px', '16px', '14px'];
+            }
         }
 
         // 2. Headline
         if ($headline_key !== null) {
-            $layers[$headline_key]['content']['text'] = $event['headline'] ?? '';
+            $headline_text = $event['headline'] ?? '';
+            $layers[$headline_key]['content']['text'] = $headline_text;
             $apply_font($layers[$headline_key], 'headline', $event);
+            // Fix tablet width (template has 481/367px)
+            $hw = $layers[$headline_key]['size']['w'] ?? [];
+            if (is_array($hw)) {
+                if (($hw[2] ?? '') === '481px') $hw[2] = 'auto';
+                if (($hw[3] ?? '') === '367px') $hw[3] = 'auto';
+                $layers[$headline_key]['size']['w'] = $hw;
+            }
+            // Adjust line-height based on single vs multi-line headline
+            // Template default 56px lh is for 2-line headlines with <br>
+            $is_multiline = (stripos($headline_text, '<br') !== false);
+            if (!$is_multiline) {
+                // Single-line: tighter line-height (1.1x font size or ~46px for 42px font)
+                $layers[$headline_key]['lh'] = ['46px', '46px', '#a', '#a', '24px'];
+            }
         }
 
         // 3. Subheadline
@@ -328,6 +353,16 @@ class TMD_EBM_Slider_Helper {
                 $event['trust_font_size_tablet'] ?? null,
                 $event['trust_font_size_mobile'] ?? null
             );
+            // Fix tablet width (template has 481/367px)
+            $tw = $layers[$trust_key]['size']['w'] ?? [];
+            if (is_array($tw)) {
+                if (($tw[2] ?? '') === '481px') $tw[2] = 'auto';
+                if (($tw[3] ?? '') === '367px') $tw[3] = 'auto';
+                $layers[$trust_key]['size']['w'] = $tw;
+            }
+            if (($layers[$trust_key]['lh'][0] ?? '') === '40px') {
+                $layers[$trust_key]['lh'] = ['20px', '20px', '18px', '16px', '14px'];
+            }
         }
 
         // 6. Button
